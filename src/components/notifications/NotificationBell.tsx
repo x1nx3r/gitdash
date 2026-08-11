@@ -141,6 +141,14 @@ export default function NotificationBell() {
       )}
 
       <md-icon-button
+        aria-label="Start slideshow"
+        onClick={() => window.dispatchEvent(new Event('gitdash:start-slideshow'))}
+        suppressHydrationWarning
+      >
+        <md-icon>slideshow</md-icon>
+      </md-icon-button>
+
+      <md-icon-button
         aria-label="Open settings"
         onClick={goToSettings}
         suppressHydrationWarning

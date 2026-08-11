@@ -5,6 +5,7 @@ import '@material/web/progress/linear-progress.js';
 import '@material/web/icon/icon.js';
 import '@material/web/labs/card/elevated-card.js';
 import KanbanBoard from '@/components/kanban/KanbanBoard';
+import Slideshow from '@/components/slideshow/Slideshow';
 import { useRepos } from '@/components/repos/RepoProvider';
 import { GitHubApiResponse } from '@/types/github';
 
@@ -98,6 +99,7 @@ export default function Home() {
           <KanbanBoard columns={data.columns} />
         </main>
       )}
+      <Slideshow data={data} />
     </div>
   );
 }

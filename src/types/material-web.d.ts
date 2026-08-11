@@ -67,6 +67,13 @@ declare module 'react' {
     // eslint-disable-next-line @typescript-eslint/no-empty-object-type
     interface IntrinsicElements extends MaterialElements {}
   }
+
+  // Allow CSS custom properties (e.g. --md-icon-size) in style objects.
+  // @types/react removed the index signature; this is the documented
+  // augmentation approach (see the comment in CSSProperties).
+  interface CSSProperties {
+    [key: `--${string}`]: string | number | undefined;
+  }
 }
 
 declare module 'react/jsx-runtime' {

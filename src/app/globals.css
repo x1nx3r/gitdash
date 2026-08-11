@@ -232,3 +232,45 @@ md-elevated-card.clickable:active {
 ::-webkit-scrollbar-thumb:hover {
   background: var(--md-sys-color-outline);
 }
+
+/* ---------------------------------------------------------------------------
+   Metro tile mosaic (slideshow)
+
+   Fixed composition tuned for a 1920x1080 wall: 8 cols x 3 rows of equal
+   1fr cells that FILL the screen. Every tile is one 1x1 box (hero and
+   spotlight are 2x2 boxes). Sizes are fixed px, tuned once at 1080p.
+--------------------------------------------------------------------------- */
+.tile-grid {
+  --tile-gap: 20px;
+  --tile-pad: 24px;
+  --tile-radius: 24px;
+  --tile-num: 44px;
+  --tile-num-hero: 64px;
+  --tile-num-wide: 48px;
+  --tile-icon: 32px;
+  --tile-icon-hero: 44px;
+  --tile-icon-sm: 20px;
+  --tile-label: 18px;
+  --tile-title: 22px;
+  --tile-body: 18px;
+
+  display: grid;
+  grid-template-columns: repeat(8, minmax(0, 1fr));
+  grid-template-rows: repeat(3, minmax(0, 1fr));
+  gap: var(--tile-gap);
+}
+
+.tile {
+  padding: var(--tile-pad);
+  border-radius: var(--tile-radius);
+}
+
+.tile-num { font-size: var(--tile-num); line-height: 1.1; }
+.tile-num-hero { font-size: var(--tile-num-hero); line-height: 1.1; }
+.tile-num-wide { font-size: var(--tile-num-wide); line-height: 1.1; }
+.tile-icon { --md-icon-size: var(--tile-icon); }
+.tile-icon-hero { --md-icon-size: var(--tile-icon-hero); }
+.tile-icon-sm { --md-icon-size: var(--tile-icon-sm); }
+.tile-label { font-size: var(--tile-label); }
+.tile-title { font-size: var(--tile-title); }
+.tile-body { font-size: var(--tile-body); }
