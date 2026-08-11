@@ -78,3 +78,5 @@ src/lib/            auth, s3, fortunes, timing, github enrichment
 ```
 
 That's it. Read the code if you want details — it's not long.
+
+Entire thing is vibecoded, I don't read even a single line of the code, good luck.
