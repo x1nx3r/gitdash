@@ -40,30 +40,8 @@ const EXIT_FADE_MS = 450;
 
 type Slide =
   | { kind: 'metrics'; data: GitHubApiResponse }
-  | { kind: 'pr'; pr: PullRequest; accent: string; onAccent: string; columnLabel: string; columnIcon: string }
   | { kind: 'merged'; prs: PullRequest[] }
   | { kind: 'events'; events: NotificationEvent[] };
-
-const COLUMN_META = {
-  needs_review: {
-    label: 'Needs review',
-    icon: 'rate_review',
-    accent: 'var(--md-sys-color-primary)',
-    onAccent: 'var(--md-sys-color-on-primary)',
-  },
-  changes_requested: {
-    label: 'Changes requested',
-    icon: 'rate_review_off',
-    accent: 'var(--md-sys-color-error)',
-    onAccent: 'var(--md-sys-color-on-error)',
-  },
-  ready_to_merge: {
-    label: 'Ready to merge',
-    icon: 'rocket_launch',
-    accent: 'var(--md-sys-color-secondary)',
-    onAccent: 'var(--md-sys-color-on-secondary)',
-  },
-} as const;
 
 const EVENT_META: Record<NotificationEventType, { icon: string; accent: string }> = {
   new_pr: { icon: 'notifications', accent: 'var(--md-sys-color-primary)' },
@@ -72,21 +50,16 @@ const EVENT_META: Record<NotificationEventType, { icon: string; accent: string }
   changes_requested: { icon: 'edit_off', accent: 'var(--md-sys-color-error)' },
 };
 
+// One round = the Overview slide plus the last slide (Recent activity when
+// events exist, else Merged today). No PR spotlights in between.
 function buildSlides(data: GitHubApiResponse, events: NotificationEvent[] | null): Slide[] {
-  const slides: Slide[] = [{ kind: 'metrics', data }];
-  for (const key of ['needs_review', 'changes_requested', 'ready_to_merge'] as const) {
-    const meta = COLUMN_META[key];
-    for (const pr of data.columns[key]) {
-      slides.push({ kind: 'pr', pr, accent: meta.accent, onAccent: meta.onAccent, columnLabel: meta.label, columnIcon: meta.icon });
-    }
-  }
-  if (data.columns.merged_today.length > 0) {
-    slides.push({ kind: 'merged', prs: data.columns.merged_today });
-  }
-  if (events && events.length > 0) {
-    slides.push({ kind: 'events', events: [...events].reverse().slice(0, 8) });
-  }
-  return slides;
+  const last: Slide | null =
+    events && events.length > 0
+      ? { kind: 'events', events: [...events].reverse().slice(0, 8) }
+      : data.columns.merged_today.length > 0
+        ? { kind: 'merged', prs: data.columns.merged_today }
+        : null;
+  return last ? [{ kind: 'metrics', data }, last] : [{ kind: 'metrics', data }];
 }
 
 function eventTimeAgo(ts: number): string {
@@ -308,70 +281,6 @@ function MosaicSlide({
   );
 }
 
-function PRSpotlight({ slide }: { slide: Extract<Slide, { kind: 'pr' }> }) {
-  const { pr, accent, onAccent, columnLabel, columnIcon } = slide;
-  const hoursOpen = Math.max(
-    1,
-    Math.round((new Date().getTime() - new Date(pr.createdAt).getTime()) / 3_600_000)
-  );
-  return (
-    <div className="flex flex-col items-center gap-8 text-center">
-      <div className="flex flex-wrap items-center justify-center gap-4">
-        <span
-          className="flex items-center gap-2 rounded-full px-4 py-1.5"
-          style={{ backgroundColor: accent, color: onAccent }}
-        >
-          <md-icon style={{ '--md-icon-size': '20px' }}>{columnIcon}</md-icon>
-          <span className="md-typescale-label-large">{columnLabel}</span>
-        </span>
-        <span className="md-typescale-title-medium text-[var(--md-sys-color-on-surface-variant)]">
-          {pr.repository.fullName} · #{pr.number}
-        </span>
-        {pr.isDraft && (
-          <span className="rounded-full bg-[var(--md-sys-color-surface-container-highest)] px-3 py-1 md-typescale-label-medium text-[var(--md-sys-color-on-surface-variant)]">
-            Draft
-          </span>
-        )}
-      </div>
-      <h2 className="md-typescale-display-small max-w-5xl text-[var(--md-sys-color-on-surface)]">
-        {pr.title}
-      </h2>
-      <div className="flex items-center gap-4">
-        {pr.author.avatarUrl && (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={pr.author.avatarUrl} alt={pr.author.login} className="h-10 w-10 rounded-full" />
-        )}
-        <span className="md-typescale-title-medium text-[var(--md-sys-color-on-surface)]">
-          {pr.author.login}
-        </span>
-        <span className="md-typescale-title-medium text-[var(--md-sys-color-success)]">
-          +{pr.stats.additions.toLocaleString()}
-        </span>
-        <span className="md-typescale-title-medium text-[var(--md-sys-color-error)]">
-          −{pr.stats.deletions.toLocaleString()}
-        </span>
-        <span className="md-typescale-title-medium text-[var(--md-sys-color-on-surface-variant)]">
-          · {pr.stats.changedFiles} files
-        </span>
-        <span className="md-typescale-title-medium text-[var(--md-sys-color-on-surface-variant)]">
-          · open {hoursOpen >= 24 ? `${Math.round(hoursOpen / 24)}d` : `${hoursOpen}h`}
-        </span>
-      </div>
-      {pr.labels.length > 0 && (
-        <div className="flex flex-wrap justify-center gap-2">
-          {pr.labels.map(l => (
-            <span
-              key={l}
-              className="rounded-full bg-[var(--md-sys-color-surface-container-highest)] px-3 py-1 text-[var(--md-sys-color-on-surface-variant)]"
-            >
-              {l}
-            </span>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
 
 function MergedSlide({ prs }: { prs: PullRequest[] }) {
   return (
@@ -600,7 +509,6 @@ export default function Slideshow({ data }: SlideshowProps) {
         {slide.kind === 'metrics' && (
           <MosaicSlide data={slide.data} fortune={fortune} />
         )}
-        {slide.kind === 'pr' && <PRSpotlight slide={slide} />}
         {slide.kind === 'merged' && <MergedSlide prs={slide.prs} />}
         {slide.kind === 'events' && <EventsSlide events={slide.events} />}
       </div>
@@ -609,11 +517,9 @@ export default function Slideshow({ data }: SlideshowProps) {
         <span className="md-typescale-label-small text-[var(--md-sys-color-on-surface-variant)]">
           {slide.kind === 'metrics'
             ? 'Overview'
-            : slide.kind === 'pr'
-              ? 'Pull request'
-              : slide.kind === 'merged'
-                ? 'Merged today'
-                : 'Recent activity'}
+            : slide.kind === 'merged'
+              ? 'Merged today'
+              : 'Recent activity'}
           {' · '}
           {index + 1}/{slides.length}
         </span>
