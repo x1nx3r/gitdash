@@ -74,7 +74,7 @@ export default function KanbanBoard({ columns }: KanbanBoardProps) {
             className="flex min-h-[70vh] flex-col rounded-[var(--md-sys-shape-corner-extra-large)] bg-[var(--md-sys-color-surface-container)] p-4"
           >
             {/* Column header */}
-            <header className="mb-4 flex items-center justify-between rounded-[var(--md-sys-shape-corner-large)] bg-[var(--md-sys-color-surface-container-high)] px-4 py-3">
+            <header className="mb-4 flex items-center justify-between rounded-[var(--md-sys-shape-corner-medium)] bg-[var(--md-sys-color-surface-container-high)] px-4 py-3">
               <div className="flex items-center gap-2.5">
                 <md-icon
                   style={{ fontSize: '20px', color: col.accent }}
@@ -100,7 +100,7 @@ export default function KanbanBoard({ columns }: KanbanBoardProps) {
             {/* PR list */}
             <div className="flex flex-1 flex-col gap-3">
               {prs.length === 0 ? (
-                <div className="flex flex-1 items-center justify-center rounded-[var(--md-sys-shape-corner-large)] border border-dashed border-[var(--md-sys-color-outline-variant)] p-4 md-typescale-body-medium text-[var(--md-sys-color-outline)]">
+                <div className="flex flex-1 items-center justify-center rounded-[var(--md-sys-shape-corner-medium)] border border-dashed border-[var(--md-sys-color-outline-variant)] p-4 md-typescale-body-medium text-[var(--md-sys-color-outline)]">
                   No items
                 </div>
               ) : (

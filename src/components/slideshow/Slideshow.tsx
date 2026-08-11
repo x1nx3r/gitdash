@@ -297,7 +297,7 @@ function MergedSlide({ prs }: { prs: PullRequest[] }) {
         {prs.map(pr => (
           <div
             key={pr.id}
-            className="flex items-center gap-4 rounded-2xl bg-[var(--md-sys-color-surface-container)] px-6 py-4"
+            className="flex items-center gap-4 rounded-[var(--md-sys-shape-corner-large)] bg-[var(--md-sys-color-surface-container)] px-6 py-4"
           >
             <md-icon style={{ color: 'var(--md-sys-color-success)' }}>task_alt</md-icon>
             <div className="flex-1 truncate text-left">
@@ -334,7 +334,7 @@ function EventsSlide({ events }: { events: NotificationEvent[] }) {
         {events.map((e, i) => (
           <div
             key={`${e.timestamp}-${i}`}
-            className="flex items-center gap-4 rounded-2xl bg-[var(--md-sys-color-surface-container)] px-6 py-4"
+            className="flex items-center gap-4 rounded-[var(--md-sys-shape-corner-large)] bg-[var(--md-sys-color-surface-container)] px-6 py-4"
           >
             <md-icon style={{ color: EVENT_META[e.type].accent }}>{EVENT_META[e.type].icon}</md-icon>
             <div className="flex-1 truncate text-left">
