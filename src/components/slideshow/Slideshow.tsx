@@ -12,6 +12,11 @@ import {
   subscribeSlideTiming,
 } from '@/lib/slideshowTiming';
 import { Fortune } from '@/lib/fortunes';
+import {
+  cacheFortunes,
+  pickFortune,
+  readCachedFortunes,
+} from '@/lib/fortunesClient';
 
 /**
  * Timed wallboard slideshow. The board shows normally; every interval the
@@ -461,11 +466,30 @@ export default function Slideshow({ data }: SlideshowProps) {
     return () => clearTimeout(id);
   }, [active, leaving]);
 
-  // Fresh events feed and a fresh fortune each time the slideshow starts.
+  // Warm the fortune cache while the board shows, so even the first round
+  // has a quote with no network wait.
+  React.useEffect(() => {
+    if (readCachedFortunes()) return;
+    (async () => {
+      try {
+        const res = await fetch('/api/fortunes');
+        if (!res.ok) return;
+        const json = (await res.json()) as { fortunes: Fortune[] };
+        if (json.fortunes.length > 0) cacheFortunes(json.fortunes);
+      } catch {
+        // Ignore; the round-start refresh will retry.
+      }
+    })();
+  }, []);
+
+  // Fresh events feed each time the slideshow starts. Fortunes: pick from
+  // the cache immediately, then refresh the list in the background.
   React.useEffect(() => {
     if (!active) return;
     let cancelled = false;
     (async () => {
+      const cached = readCachedFortunes();
+      if (cached && cached.length > 0) setFortune(pickFortune(cached));
       try {
         const res = await fetch('/api/notifications/events');
         if (!res.ok) return;
@@ -478,12 +502,19 @@ export default function Slideshow({ data }: SlideshowProps) {
         const res = await fetch('/api/fortunes');
         if (!res.ok) return;
         const json = (await res.json()) as { fortunes: Fortune[] };
-        if (!cancelled && json.fortunes.length > 0) {
-          const pick = json.fortunes[Math.floor(Math.random() * json.fortunes.length)];
-          setFortune(pick);
+        if (cancelled) return;
+        cacheFortunes(json.fortunes);
+        if (json.fortunes.length === 0) {
+          setFortune(null);
+        } else {
+          setFortune(prev =>
+            prev && json.fortunes.some(f => f.text === prev.text)
+              ? prev
+              : pickFortune(json.fortunes)
+          );
         }
       } catch {
-        // Ignore; the Overview slide simply shows no quote.
+        // Ignore; the cached quote stays.
       }
     })();
     return () => {
