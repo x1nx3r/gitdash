@@ -44,6 +44,14 @@ function SectionCard({
 export default function SettingsPage() {
   const router = useRouter();
 
+  const logout = async () => {
+    try {
+      await fetch('/api/auth/logout', { method: 'POST' });
+    } finally {
+      router.push('/login');
+    }
+  };
+
   return (
     <div className="min-h-screen bg-[var(--md-sys-color-surface)]">
       {/* Top app bar */}
@@ -58,6 +66,11 @@ export default function SettingsPage() {
         <span className="md-typescale-title-medium text-[var(--md-sys-color-on-surface)]">
           Settings
         </span>
+        <div className="ml-auto">
+          <md-text-button onClick={logout} suppressHydrationWarning>
+            Logout
+          </md-text-button>
+        </div>
       </header>
 
       <main className="mx-auto flex w-full max-w-2xl flex-col gap-6 p-4 lg:p-8">

@@ -2,6 +2,7 @@ import { NextResponse, NextRequest } from 'next/server';
 import { GitHubApiResponse, KanbanColumns, PullRequest, User } from '@/types/github';
 import { isS3Configured, putJson } from '@/lib/s3';
 import { enrichPRs, deriveColumn, getAccessibleRepos } from '@/lib/githubEnrich';
+import { requireAuth } from '@/lib/auth';
 
 function parseIncludedRepos(request: NextRequest): string[] {
   const raw = request.nextUrl.searchParams.get('repos');
@@ -190,6 +191,8 @@ function getMockPullRequests(): PullRequest[] {
 }
 
 export async function GET(request: NextRequest) {
+  const denied = requireAuth(request);
+  if (denied) return denied;
   const pat = process.env.GITHUB_PAT;
   const includedRepos = parseIncludedRepos(request);
 

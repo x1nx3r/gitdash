@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { Repo, User, UserListResponse } from '@/types/github';
 import { getJson, putJson, ensureBucket, isS3Configured } from '@/lib/s3';
+import { requireAuth } from '@/lib/auth';
 
 const USERS_KEY = 'users.json';
 const REFRESH_MS = 60 * 60 * 1000; // 1 hour
@@ -95,7 +96,9 @@ async function fetchAllRepos(pat: string): Promise<Repo[]> {
   }
 }
 
-export async function GET() {
+export async function GET(request: Request) {
+  const denied = requireAuth(request);
+  if (denied) return denied;
   if (!isS3Configured()) {
     return NextResponse.json({
       users: MOCK_USERS,

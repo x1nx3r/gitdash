@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Roboto } from "next/font/google";
 import "./globals.css";
 import Providers from "@/components/notifications/Providers";
+import AuthGate from "@/components/auth/AuthGate";
 
 const roboto = Roboto({
   weight: ["400", "500"],
@@ -24,7 +25,9 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${roboto.variable} h-full antialiased`}>
       <body className="min-h-full bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)]">
-        <Providers>{children}</Providers>
+        <AuthGate>
+          <Providers>{children}</Providers>
+        </AuthGate>
       </body>
     </html>
   );

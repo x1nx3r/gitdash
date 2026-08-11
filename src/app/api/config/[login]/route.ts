@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { NotificationSettings } from '@/types/notifications';
 import { getJson, putJson, ensureBucket, isS3Configured } from '@/lib/s3';
+import { requireAuth } from '@/lib/auth';
 
 const DEFAULT_SETTINGS: NotificationSettings = {
   enabled: true,
@@ -20,9 +21,11 @@ function configKey(login: string): string {
 }
 
 export async function GET(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ login: string }> }
 ) {
+  const denied = requireAuth(request);
+  if (denied) return denied;
   const { login } = await params;
   if (!login) return NextResponse.json({ error: 'login required' }, { status: 400 });
 
@@ -40,6 +43,8 @@ export async function PUT(
   request: Request,
   { params }: { params: Promise<{ login: string }> }
 ) {
+  const denied = requireAuth(request);
+  if (denied) return denied;
   const { login } = await params;
   if (!login) return NextResponse.json({ error: 'login required' }, { status: 400 });
 

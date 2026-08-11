@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { Repo, RepoListResponse } from '@/types/github';
 import { isS3Configured, putJson } from '@/lib/s3';
+import { requireAuth } from '@/lib/auth';
 
 // Mirrors the repos referenced by getMockPullRequests() in the PRs route.
 const MOCK_REPOS: Repo[] = [
@@ -12,7 +13,9 @@ const MOCK_REPOS: Repo[] = [
   { name: 'auth-service', fullName: 'org/auth-service' },
 ];
 
-export async function GET() {
+export async function GET(request: Request) {
+  const denied = requireAuth(request);
+  if (denied) return denied;
   const pat = process.env.GITHUB_PAT;
 
   if (pat) {
