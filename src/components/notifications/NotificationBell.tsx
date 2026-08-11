@@ -74,72 +74,79 @@ export default function NotificationBell() {
     };
   }, [open]);
 
-  // Notifications only exist when GitHub webhooks deliver them.
-  if (!configured) return null;
-
+  // Notifications only exist when GitHub webhooks deliver them; the
+  // settings gear stays visible either way.
   const goToSettings = () => {
     setOpen(false);
     router.push('/settings');
   };
 
   return (
-    <div ref={panelRef} className="fixed bottom-6 right-6 z-50 flex flex-col items-end">
-      <div className="relative inline-flex">
-        <md-icon-button
-          aria-label="Notifications"
-          onClick={() => setOpen(o => !o)}
-          suppressHydrationWarning
-        >
-          <md-icon>{unreadCount > 0 ? 'notifications' : 'notifications_none'}</md-icon>
-        </md-icon-button>
-        {unreadCount > 0 && (
-          <md-badge
-            value={unreadCount}
-            className="absolute -right-1 -top-1"
-            suppressHydrationWarning
-          ></md-badge>
-        )}
-      </div>
-
-      {open && (
-        <md-elevated-card className="mb-3 mt-2 !block w-[340px] max-w-[90vw] overflow-hidden">
-          <div className="flex flex-col">
-            {/* Panel header */}
-            <div className="flex items-center justify-between gap-2 px-4 pb-2 pt-3">
-              <span className="md-typescale-title-small text-[var(--md-sys-color-on-surface)]">
-                Notifications
-              </span>
-              <div className="flex items-center gap-0.5">
-                {notifications.length > 0 && (
-                  <md-text-button onClick={markAllRead} suppressHydrationWarning>
-                    Mark all read
-                  </md-text-button>
-                )}
-                <md-icon-button
-                  aria-label="Open settings"
-                  onClick={goToSettings}
-                  suppressHydrationWarning
-                >
-                  <md-icon>settings</md-icon>
-                </md-icon-button>
-                {notifications.length > 0 && (
-                  <md-icon-button
-                    aria-label="Clear notifications"
-                    onClick={clearAll}
-                    suppressHydrationWarning
-                  >
-                    <md-icon>clear_all</md-icon>
-                  </md-icon-button>
-                )}
-              </div>
-            </div>
-
-            <md-divider></md-divider>
-
-            <NotificationList notifications={notifications} onOpen={markRead} />
+    <div
+      ref={panelRef}
+      className="fixed bottom-6 right-6 z-50 flex flex-col items-end gap-2"
+    >
+      {configured && (
+        <>
+          <div className="relative inline-flex">
+            <md-icon-button
+              aria-label="Notifications"
+              onClick={() => setOpen(o => !o)}
+              suppressHydrationWarning
+            >
+              <md-icon>{unreadCount > 0 ? 'notifications' : 'notifications_none'}</md-icon>
+            </md-icon-button>
+            {unreadCount > 0 && (
+              <md-badge
+                value={unreadCount}
+                className="absolute -right-1 -top-1"
+                suppressHydrationWarning
+              ></md-badge>
+            )}
           </div>
-        </md-elevated-card>
+
+          {open && (
+            <md-elevated-card className="mb-1 !block w-[340px] max-w-[90vw] overflow-hidden">
+              <div className="flex flex-col">
+                {/* Panel header */}
+                <div className="flex items-center justify-between gap-2 px-4 pb-2 pt-3">
+                  <span className="md-typescale-title-small text-[var(--md-sys-color-on-surface)]">
+                    Notifications
+                  </span>
+                  <div className="flex items-center gap-0.5">
+                    {notifications.length > 0 && (
+                      <md-text-button onClick={markAllRead} suppressHydrationWarning>
+                        Mark all read
+                      </md-text-button>
+                    )}
+                    {notifications.length > 0 && (
+                      <md-icon-button
+                        aria-label="Clear notifications"
+                        onClick={clearAll}
+                        suppressHydrationWarning
+                      >
+                        <md-icon>clear_all</md-icon>
+                      </md-icon-button>
+                    )}
+                  </div>
+                </div>
+
+                <md-divider></md-divider>
+
+                <NotificationList notifications={notifications} onOpen={markRead} />
+              </div>
+            </md-elevated-card>
+          )}
+        </>
       )}
+
+      <md-icon-button
+        aria-label="Open settings"
+        onClick={goToSettings}
+        suppressHydrationWarning
+      >
+        <md-icon>settings</md-icon>
+      </md-icon-button>
     </div>
   );
 }
