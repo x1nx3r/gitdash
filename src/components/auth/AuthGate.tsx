@@ -33,7 +33,7 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
     return () => {
       active = false;
     };
-  }, [router]);
+  }, [router, pathname]);
 
   if (pathname === '/login') return <>{children}</>;
   if (!ok) return null;
