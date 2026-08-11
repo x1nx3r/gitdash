@@ -13,6 +13,16 @@ import WebhookSetupCard from '@/components/settings/WebhookSetupCard';
 import M3TextField from '@/components/notifications/M3TextField';
 import { User, UserListResponse } from '@/types/github';
 import { NotificationSettings } from '@/types/notifications';
+import { THEMES, applyTheme, readTheme, subscribeTheme } from '@/lib/theme';
+import {
+  MIN_INTERVAL_SEC,
+  MIN_SLIDE_SEC,
+  clearSlideTiming,
+  defaultSlideTiming,
+  readSlideTiming,
+  saveSlideTiming,
+  subscribeSlideTiming,
+} from '@/lib/slideshowTiming';
 
 function SectionCard({
   title,
@@ -75,6 +85,14 @@ export default function SettingsPage() {
       </header>
 
       <main className="mx-auto flex w-full max-w-2xl flex-col gap-6 p-4 lg:p-8">
+        <SectionCard title="Appearance" icon="palette">
+          <ThemePanel />
+        </SectionCard>
+
+        <SectionCard title="Slideshow" icon="slideshow">
+          <SlideshowTimingPanel />
+        </SectionCard>
+
         <SectionCard title="Notification sounds" icon="notifications">
           <UserSoundsPanel />
         </SectionCard>
@@ -87,6 +105,146 @@ export default function SettingsPage() {
           <RepoSettingsSection />
         </SectionCard>
       </main>
+    </div>
+  );
+}
+
+function TimingField({
+  value,
+  min,
+  placeholder,
+  ariaLabel,
+  onValid,
+}: {
+  value: number;
+  min: number;
+  placeholder: string;
+  ariaLabel: string;
+  onValid: (seconds: number) => void;
+}) {
+  const [draft, setDraft] = React.useState(String(value));
+  const [prevValue, setPrevValue] = React.useState(value);
+  if (value !== prevValue) {
+    setPrevValue(value);
+    setDraft(String(value));
+  }
+
+  return (
+    <M3TextField
+      value={draft}
+      placeholder={placeholder}
+      ariaLabel={ariaLabel}
+      onValueChange={v => {
+        setDraft(v);
+        const n = Number(v);
+        if (Number.isFinite(n) && n >= min) onValid(n);
+      }}
+    />
+  );
+}
+
+function SlideshowTimingPanel() {
+  const timing = React.useSyncExternalStore(
+    subscribeSlideTiming,
+    readSlideTiming,
+    defaultSlideTiming
+  );
+  const intervalSec = Math.round(timing.intervalMs / 1000);
+  const slideSec = Math.round(timing.slideMs / 1000);
+
+  return (
+    <div className="flex flex-col gap-4">
+      <p className="md-typescale-label-small text-[var(--md-sys-color-on-surface-variant)]">
+        Interval: how long the board shows before the slideshow takes over.
+        Slide: how long each slide stays up. Changes apply from the next
+        round.
+      </p>
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <TimingField
+          value={intervalSec}
+          min={MIN_INTERVAL_SEC}
+          placeholder="Interval (seconds)"
+          ariaLabel="Slideshow interval in seconds"
+          onValid={s => saveSlideTiming(s, slideSec)}
+        />
+        <TimingField
+          value={slideSec}
+          min={MIN_SLIDE_SEC}
+          placeholder="Slide (seconds)"
+          ariaLabel="Seconds per slide"
+          onValid={s => saveSlideTiming(intervalSec, s)}
+        />
+      </div>
+      <div className="flex items-center justify-between gap-3">
+        <span className="md-typescale-label-small text-[var(--md-sys-color-on-surface-variant)]">
+          Falls back to NEXT_PUBLIC_SLIDESHOW_INTERVAL_MIN / SLIDE_SEC when
+          cleared.
+        </span>
+        <md-text-button onClick={clearSlideTiming} suppressHydrationWarning>
+          Reset to defaults
+        </md-text-button>
+      </div>
+    </div>
+  );
+}
+
+function ThemePanel() {
+  const theme = React.useSyncExternalStore(
+    subscribeTheme,
+    readTheme,
+    () => 'default'
+  );
+
+  return (
+    <div className="flex flex-col gap-4">
+      <p className="md-typescale-label-small text-[var(--md-sys-color-on-surface-variant)]">
+        Color scheme for the whole app and slideshow. Applies instantly and is
+        remembered on this device.
+      </p>
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+        {THEMES.map(t => {
+          const active = theme === t.id;
+          return (
+            <button
+              key={t.id}
+              type="button"
+              onClick={() => applyTheme(t.id)}
+              className={`flex items-center gap-3 rounded-[var(--md-sys-shape-corner-small)] p-3 text-left transition-colors ${
+                active
+                  ? 'bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)]'
+                  : 'bg-[var(--md-sys-color-surface-container)] hover:bg-[var(--md-sys-color-surface-container-high)]'
+              }`}
+            >
+              <span className="flex shrink-0 gap-1">
+                {t.swatch.map(c => (
+                  <span
+                    key={c}
+                    className="h-4 w-4 rounded-full"
+                    style={{ backgroundColor: c }}
+                  />
+                ))}
+              </span>
+              <span className="min-w-0">
+                <span
+                  className={`block truncate md-typescale-body-medium ${
+                    active
+                      ? 'text-[var(--md-sys-color-on-primary-container)]'
+                      : 'text-[var(--md-sys-color-on-surface)]'
+                  }`}
+                >
+                  {t.label}
+                </span>
+                <span className="block truncate md-typescale-label-small text-[var(--md-sys-color-on-surface-variant)]">
+                  {t.description}
+                </span>
+              </span>
+              {active && (
+                <md-icon className="ml-auto shrink-0">check_circle</md-icon>
+              )}
+            </button>
+          );
+        })}
+      </div>
     </div>
   );
 }

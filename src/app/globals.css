@@ -95,6 +95,190 @@
 }
 
 /* ============================================================================
+   Alternate color schemes. Set via document.documentElement.dataset.theme
+   (persisted as "gitdash_theme" in localStorage; default keeps no attribute).
+   Each block overrides the full token set — Material Web components inherit
+   these from <html>, so the app and the slideshow re-theme live.
+   ============================================================================ */
+
+/* ----- Rosé Pine Moon: muted warm dark, low glare for dim screens ----- */
+html[data-theme='rosepine'] {
+  --md-sys-color-primary: #c4a7e7;
+  --md-sys-color-on-primary: #33264a;
+  --md-sys-color-primary-container: #5b4d70;
+  --md-sys-color-on-primary-container: #ece0f8;
+
+  --md-sys-color-secondary: #9ccfd8;
+  --md-sys-color-on-secondary: #1f3136;
+  --md-sys-color-secondary-container: #41555c;
+  --md-sys-color-on-secondary-container: #d8eef2;
+
+  --md-sys-color-tertiary: #ea9a97;
+  --md-sys-color-on-tertiary: #3d1d1c;
+  --md-sys-color-tertiary-container: #5d3433;
+  --md-sys-color-on-tertiary-container: #f8d8d6;
+
+  --md-sys-color-error: #eb6f92;
+  --md-sys-color-on-error: #3d1624;
+  --md-sys-color-error-container: #5c2940;
+  --md-sys-color-on-error-container: #fbd7e2;
+
+  --md-sys-color-success: #8fc4d4;
+  --md-sys-color-on-success: #0e242e;
+  --md-sys-color-success-container: #2b4957;
+  --md-sys-color-on-success-container: #d3eaf1;
+
+  --md-sys-color-warning: #f6c177;
+  --md-sys-color-on-warning: #3a2c12;
+  --md-sys-color-warning-container: #5a4a26;
+  --md-sys-color-on-warning-container: #fbe6bd;
+
+  --md-sys-color-surface: #232136;
+  --md-sys-color-surface-dim: #191724;
+  --md-sys-color-surface-bright: #393552;
+  --md-sys-color-surface-container-lowest: #191724;
+  --md-sys-color-surface-container-low: #2a273f;
+  --md-sys-color-surface-container: #312e45;
+  --md-sys-color-surface-container-high: #393552;
+  --md-sys-color-surface-container-highest: #413d57;
+  --md-sys-color-surface-variant: #56526e;
+  --md-sys-color-on-surface: #e0def4;
+  --md-sys-color-on-surface-variant: #908caa;
+
+  --md-sys-color-outline: #6e6a86;
+  --md-sys-color-outline-variant: #3a374f;
+  --md-sys-color-scrim: #000000;
+  --md-sys-color-shadow: #000000;
+  --md-sys-color-surface-tint: #c4a7e7;
+  --md-sys-color-inverse-surface: #e0def4;
+  --md-sys-color-inverse-on-surface: #232136;
+  --md-sys-color-inverse-primary: #8f77b3;
+
+  --md-sys-state-hover: rgb(224 222 244 / 0.08);
+  --md-sys-state-focus: rgb(224 222 244 / 0.12);
+  --md-sys-state-pressed: rgb(224 222 244 / 0.12);
+  --md-sys-state-dragged: rgb(224 222 244 / 0.16);
+}
+
+/* ----- Catppuccin Mocha: cool dark with saturated accents ----- */
+html[data-theme='catppuccin'] {
+  --md-sys-color-primary: #89b4fa;
+  --md-sys-color-on-primary: #0f2a55;
+  --md-sys-color-primary-container: #2c4b7c;
+  --md-sys-color-on-primary-container: #d8e7ff;
+
+  --md-sys-color-secondary: #cba6f7;
+  --md-sys-color-on-secondary: #33265c;
+  --md-sys-color-secondary-container: #4a3d78;
+  --md-sys-color-on-secondary-container: #ece3ff;
+
+  --md-sys-color-tertiary: #94e2d5;
+  --md-sys-color-on-tertiary: #1a3d36;
+  --md-sys-color-tertiary-container: #2d5a50;
+  --md-sys-color-on-tertiary-container: #d5f5ee;
+
+  --md-sys-color-error: #f38ba8;
+  --md-sys-color-on-error: #3d1620;
+  --md-sys-color-error-container: #5c2940;
+  --md-sys-color-on-error-container: #ffd9e2;
+
+  --md-sys-color-success: #a6e3a1;
+  --md-sys-color-on-success: #153d14;
+  --md-sys-color-success-container: #2e5c2c;
+  --md-sys-color-on-success-container: #d9f5d6;
+
+  --md-sys-color-warning: #f9e2af;
+  --md-sys-color-on-warning: #3d2e14;
+  --md-sys-color-warning-container: #5c4a22;
+  --md-sys-color-on-warning-container: #fdeac8;
+
+  --md-sys-color-surface: #1e1e2e;
+  --md-sys-color-surface-dim: #181825;
+  --md-sys-color-surface-bright: #45475a;
+  --md-sys-color-surface-container-lowest: #11111b;
+  --md-sys-color-surface-container-low: #242438;
+  --md-sys-color-surface-container: #313244;
+  --md-sys-color-surface-container-high: #45475a;
+  --md-sys-color-surface-container-highest: #585b70;
+  --md-sys-color-surface-variant: #45475a;
+  --md-sys-color-on-surface: #cdd6f4;
+  --md-sys-color-on-surface-variant: #a6adc8;
+
+  --md-sys-color-outline: #6c7086;
+  --md-sys-color-outline-variant: #45475a;
+  --md-sys-color-scrim: #000000;
+  --md-sys-color-shadow: #000000;
+  --md-sys-color-surface-tint: #89b4fa;
+  --md-sys-color-inverse-surface: #cdd6f4;
+  --md-sys-color-inverse-on-surface: #1e1e2e;
+  --md-sys-color-inverse-primary: #355f9e;
+
+  --md-sys-state-hover: rgb(205 214 244 / 0.08);
+  --md-sys-state-focus: rgb(205 214 244 / 0.12);
+  --md-sys-state-pressed: rgb(205 214 244 / 0.12);
+  --md-sys-state-dragged: rgb(205 214 244 / 0.16);
+}
+
+/* ----- Solarized Dark: classic low-glare cyan/blue ----- */
+html[data-theme='solarized'] {
+  --md-sys-color-primary: #268bd2;
+  --md-sys-color-on-primary: #002b36;
+  --md-sys-color-primary-container: #185e8f;
+  --md-sys-color-on-primary-container: #b8dcf2;
+
+  --md-sys-color-secondary: #2aa198;
+  --md-sys-color-on-secondary: #002b36;
+  --md-sys-color-secondary-container: #135f58;
+  --md-sys-color-on-secondary-container: #b0ddd6;
+
+  --md-sys-color-tertiary: #6c71c4;
+  --md-sys-color-on-tertiary: #002b36;
+  --md-sys-color-tertiary-container: #3b3f73;
+  --md-sys-color-on-tertiary-container: #c8cbf2;
+
+  --md-sys-color-error: #dc322f;
+  --md-sys-color-on-error: #3a0d0c;
+  --md-sys-color-error-container: #6e1614;
+  --md-sys-color-on-error-container: #f5b8b5;
+
+  --md-sys-color-success: #859900;
+  --md-sys-color-on-success: #1c2200;
+  --md-sys-color-success-container: #45501a;
+  --md-sys-color-on-success-container: #dbe49a;
+
+  --md-sys-color-warning: #b58900;
+  --md-sys-color-on-warning: #2b2100;
+  --md-sys-color-warning-container: #5c4700;
+  --md-sys-color-on-warning-container: #e8d08a;
+
+  --md-sys-color-surface: #002b36;
+  --md-sys-color-surface-dim: #00212b;
+  --md-sys-color-surface-bright: #0b3d49;
+  --md-sys-color-surface-container-lowest: #001821;
+  --md-sys-color-surface-container-low: #032d39;
+  --md-sys-color-surface-container: #073642;
+  --md-sys-color-surface-container-high: #0d4653;
+  --md-sys-color-surface-container-highest: #135363;
+  --md-sys-color-surface-variant: #073642;
+  --md-sys-color-on-surface: #839496;
+  --md-sys-color-on-surface-variant: #586e75;
+
+  --md-sys-color-outline: #586e75;
+  --md-sys-color-outline-variant: #073642;
+  --md-sys-color-scrim: #000000;
+  --md-sys-color-shadow: #000000;
+  --md-sys-color-surface-tint: #268bd2;
+  --md-sys-color-inverse-surface: #839496;
+  --md-sys-color-inverse-on-surface: #002b36;
+  --md-sys-color-inverse-primary: #1a6da8;
+
+  --md-sys-state-hover: rgb(131 148 150 / 0.08);
+  --md-sys-state-focus: rgb(131 148 150 / 0.12);
+  --md-sys-state-pressed: rgb(131 148 150 / 0.12);
+  --md-sys-state-dragged: rgb(131 148 150 / 0.16);
+}
+
+/* ============================================================================
    Base
    ============================================================================ */
 

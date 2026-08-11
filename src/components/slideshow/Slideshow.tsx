@@ -5,43 +5,30 @@ import '@material/web/icon/icon.js';
 import { GitHubApiResponse, PullRequest } from '@/types/github';
 import { NotificationEvent, NotificationEventType } from '@/types/notifications';
 import { NotificationEventsResponse } from '@/types/notifications';
+import {
+  SlideTiming,
+  defaultSlideTiming,
+  readSlideTiming,
+  subscribeSlideTiming,
+} from '@/lib/slideshowTiming';
 
 /**
- * Timed wallboard slideshow. The board shows normally; every
- * NEXT_PUBLIC_SLIDESHOW_INTERVAL_MIN minutes the slideshow takes over for
- * one full round (every slide, NEXT_PUBLIC_SLIDESHOW_SLIDE_SEC each), then
- * the board comes back — repeating forever regardless of activity.
- * NEXT_PUBLIC_SLIDESHOW_DURATION_MIN is ignored: a round is however many
- * slides there are. Clicking, tapping, or pressing a key dismisses the
+ * Timed wallboard slideshow. The board shows normally; every interval the
+ * slideshow takes over for one full round (every slide, slideSec each),
+ * then the board comes back — repeating forever regardless of activity.
+ * Timing comes from the Settings page first, falling back to the
+ * NEXT_PUBLIC env vars (interval: NEXT_PUBLIC_SLIDESHOW_INTERVAL_MIN,
+ * slide: NEXT_PUBLIC_SLIDESHOW_SLIDE_SEC). A timing change applies from
+ * the next round. Clicking, tapping, or pressing a key dismisses the
  * active slideshow early; the cycle still comes back.
- * Env vars are read at build/startup (client-inlined), so restart `bun dev`
- * after changing them. Slide duration: NEXT_PUBLIC_SLIDESHOW_SLIDE_SEC.
- *
- * Values accept a unit suffix: 30s, 5m, 1h. A bare number keeps the unit
- * implied by the env name (minutes for the two timers, seconds for slides).
- * NOTE: NEXT_PUBLIC_ vars must be read via STATIC process.env.X access —
- * Next.js inlines those into client bundles at compile time. Computed
- * access (process.env[name]) is not inlined and silently yields undefined.
  */
-
-function envDuration(raw: string | undefined, fallbackMs: number): number {
-  if (!raw) return fallbackMs;
-  const m = /^(\d+(?:\.\d+)?)\s*([smh])?$/i.exec(raw.trim());
-  if (!m) return fallbackMs;
-  const value = parseFloat(m[1]);
-  const unit = (m[2] ?? '').toLowerCase();
-  const factor = unit === 's' ? 1000 : unit === 'h' ? 3_600_000 : 60_000;
-  return value * factor;
-}
-
-const INTERVAL_MS = envDuration(process.env.NEXT_PUBLIC_SLIDESHOW_INTERVAL_MIN, 15 * 60_000);
-const SLIDE_MS = envDuration(process.env.NEXT_PUBLIC_SLIDESHOW_SLIDE_SEC, 15 * 1000);
 
 // Debug: NEXT_PUBLIC_ vars are inlined when the module compiles. Compare the
 // values here against the ones in the browser console if the timers are off.
+const envTiming: SlideTiming = defaultSlideTiming();
 console.log('[slideshow] env →', {
-  intervalMs: INTERVAL_MS,
-  slideMs: SLIDE_MS,
+  intervalMs: envTiming.intervalMs,
+  slideMs: envTiming.slideMs,
 });
 
 // Deliberate input only: a stray mouse crossing the TV must not exit it.
@@ -453,21 +440,29 @@ export default function Slideshow({ data }: SlideshowProps) {
     [data, events]
   );
 
-  // Board phase only: every INTERVAL_MS the slideshow takes over for one
+  // Live timing: settings first, env fallback. Re-reads on every change, so
+  // saving new timings mid-show re-arms the phases with the new values.
+  const timing = React.useSyncExternalStore(
+    subscribeSlideTiming,
+    readSlideTiming,
+    defaultSlideTiming
+  );
+
+  // Board phase only: every interval the slideshow takes over for one
   // full round, then the board comes back — a wallboard timer, not idle
-  // detection. DURATION_MS is dead; a round is however many slides there
-  // are, SLIDE_MS each.
+  // detection. A round is however many slides there are, slideMs each.
   React.useEffect(() => {
     if (active) return;
-    const deadline = new Date().getTime() + INTERVAL_MS;
+    const ms = timing.intervalMs;
+    const deadline = new Date().getTime() + ms;
     console.log(
-      `[slideshow] board phase armed: ${INTERVAL_MS}ms (${INTERVAL_MS / 1000}s), fires at ${new Date(deadline).toISOString()}`
+      `[slideshow] board phase armed: ${ms}ms (${ms / 1000}s), fires at ${new Date(deadline).toISOString()}`
     );
     const id = setTimeout(() => {
       console.log('[slideshow] timer fired → starting one round');
       setActive(true);
       setIndex(0);
-    }, INTERVAL_MS);
+    }, ms);
     const countdown = setInterval(() => {
       const left = Math.ceil((deadline - new Date().getTime()) / 1000);
       console.log(`[slideshow] board countdown: ${left}s`);
@@ -476,29 +471,32 @@ export default function Slideshow({ data }: SlideshowProps) {
       clearTimeout(id);
       clearInterval(countdown);
     };
-  }, [active]);
+  }, [active, timing]);
 
   // Rotate slides while active; hold on the last slide.
   React.useEffect(() => {
     if (!active) return;
-    console.log(`[slideshow] rotation started: ${slides.length} slides, ${SLIDE_MS}ms each`);
+    const ms = timing.slideMs;
+    console.log(
+      `[slideshow] rotation started: ${slides.length} slides, ${ms}ms each`
+    );
     const id = setInterval(
       () => setIndex(i => Math.min(i + 1, slides.length - 1)),
-      SLIDE_MS
+      ms
     );
     return () => clearInterval(id);
-  }, [active, slides.length]);
+  }, [active, timing, slides.length]);
 
-  // End the slideshow once the last slide has had its full SLIDE_MS.
+  // End the slideshow once the last slide has had its full slideMs.
   React.useEffect(() => {
     if (!active || slides.length === 0 || index < slides.length - 1) return;
     const id = setTimeout(() => {
       console.log('[slideshow] round complete → back to board');
       setActive(false);
       setIndex(0);
-    }, SLIDE_MS);
+    }, timing.slideMs);
     return () => clearTimeout(id);
-  }, [active, index, slides.length]);
+  }, [active, index, slides.length, timing]);
 
   // Fresh events feed each time the slideshow starts.
   React.useEffect(() => {

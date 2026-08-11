@@ -25,6 +25,11 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${roboto.variable} h-full antialiased`}>
       <body className="min-h-full bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)]">
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `try{var t=localStorage.getItem('gitdash_theme');if(t&&t!=='default')document.documentElement.dataset.theme=t;}catch(e){}`,
+          }}
+        />
         <AuthGate>
           <Providers>{children}</Providers>
         </AuthGate>
