@@ -1,69 +1,103 @@
-import Image from "next/image";
+'use client';
+
+import * as React from 'react';
+import '@material/web/progress/linear-progress.js';
+import '@material/web/icon/icon.js';
+import '@material/web/labs/card/elevated-card.js';
+import KanbanBoard from '@/components/kanban/KanbanBoard';
+import { useRepos } from '@/components/repos/RepoProvider';
+import { GitHubApiResponse } from '@/types/github';
 
 export default function Home() {
+  // Hydration-safe mounted flag: true only after the client has hydrated.
+  const mounted = React.useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false
+  );
+  const [data, setData] = React.useState<GitHubApiResponse | null>(null);
+  const [loading, setLoading] = React.useState(true);
+  const [error, setError] = React.useState<string | null>(null);
+
+  const { selected } = useRepos();
+  const selectedRef = React.useRef(selected);
+  React.useEffect(() => {
+    selectedRef.current = selected;
+  }, [selected]);
+
+  const fetchKanbanData = React.useCallback(async () => {
+    try {
+      const reposParam = selectedRef.current.join(',');
+      const url = reposParam
+        ? `/api/github/prs?repos=${encodeURIComponent(reposParam)}`
+        : '/api/github/prs';
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const json: GitHubApiResponse = await res.json();
+      setData(json);
+      setError(null);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error('Failed to load Kanban data:', err);
+      setError(msg || 'Failed to fetch GitHub PR data');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  React.useEffect(() => {
+    const interval = setInterval(fetchKanbanData, 30000);
+    return () => clearInterval(interval);
+  }, [fetchKanbanData]);
+
+  React.useEffect(() => {
+    if (mounted) fetchKanbanData();
+  }, [mounted, selected, fetchKanbanData]);
+
+  if (!mounted || (loading && !data)) {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center gap-6 bg-[var(--md-sys-color-surface)] p-6 text-center">
+        <div className="w-72">
+          <md-linear-progress indeterminate suppressHydrationWarning></md-linear-progress>
+        </div>
+        <p className="md-typescale-label-large uppercase tracking-widest text-[var(--md-sys-color-on-surface-variant)]">
+          Loading dashboard
+        </p>
+      </div>
+    );
+  }
+
+  if (error && !data) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-[var(--md-sys-color-surface)] p-6">
+        <md-elevated-card className="w-full max-w-md !block">
+          <div className="flex flex-col items-center gap-4 p-8 text-center">
+            <div className="flex h-14 w-14 items-center justify-center rounded-full bg-[var(--md-sys-color-error-container)] text-[var(--md-sys-color-on-error-container)]">
+              <md-icon suppressHydrationWarning>error_outline</md-icon>
+            </div>
+            <div>
+              <h1 className="md-typescale-title-medium text-[var(--md-sys-color-on-surface)]">
+                Unable to load data
+              </h1>
+              <p className="mt-1 md-typescale-body-medium text-[var(--md-sys-color-on-surface-variant)]">
+                {error}
+              </p>
+            </div>
+            <md-filled-button onClick={fetchKanbanData}>Retry</md-filled-button>
+          </div>
+        </md-elevated-card>
+      </div>
+    );
+  }
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert h-5 w-[100px]"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the{" "}
-            <code className="rounded bg-black/[.06] px-1.5 py-0.5 font-mono text-[0.9em] dark:bg-white/[.08]">
-              page.tsx
-            </code>{" "}
-            file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert h-[14px] w-4"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={14}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
+    <div className="flex min-h-screen flex-col bg-[var(--md-sys-color-surface)]">
+      {/* Content */}
+      {data && (
+        <main className="flex-1 overflow-x-auto">
+          <KanbanBoard columns={data.columns} />
+        </main>
+      )}
     </div>
   );
 }
