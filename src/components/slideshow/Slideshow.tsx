@@ -11,6 +11,7 @@ import {
   readSlideTiming,
   subscribeSlideTiming,
 } from '@/lib/slideshowTiming';
+import { Fortune } from '@/lib/fortunes';
 
 /**
  * Timed wallboard slideshow. The board shows normally; every interval the
@@ -33,6 +34,9 @@ console.log('[slideshow] env →', {
 
 // Deliberate input only: a stray mouse crossing the TV must not exit it.
 const DISMISS_EVENTS = ['mousedown', 'keydown', 'touchstart', 'wheel'] as const;
+
+// Fade the overlay out before handing back to the board at round's end.
+const EXIT_FADE_MS = 450;
 
 type Slide =
   | { kind: 'metrics'; data: GitHubApiResponse }
@@ -95,7 +99,13 @@ function eventTimeAgo(ts: number): string {
 }
 
 
-function MosaicSlide({ data }: { data: GitHubApiResponse }) {
+function MosaicSlide({
+  data,
+  fortune,
+}: {
+  data: GitHubApiResponse;
+  fortune: Fortune | null;
+}) {
   const { metrics, columns } = data;
   const openPrs = [
     ...columns.needs_review,
@@ -121,33 +131,50 @@ function MosaicSlide({ data }: { data: GitHubApiResponse }) {
     return () => clearInterval(id);
   }, []);
 
-  const states = [
+  const stats = [
     {
-      n: columns.needs_review.length,
-      label: 'need review',
-      color: 'var(--md-sys-color-primary)',
-    },
-    {
-      n: columns.ready_to_merge.length,
+      n: metrics.readyToMergeCount,
       label: 'ready to merge',
-      color: 'var(--md-sys-color-success)',
+      caption: 'approved, no changes asked',
+      icon: 'rocket_launch',
+      color: 'var(--md-sys-color-secondary)',
     },
     {
-      n: columns.changes_requested.length,
-      label: 'changes requested',
-      color: 'var(--md-sys-color-error)',
-    },
-    {
-      n: metrics.staleCount,
-      label: 'stale',
-      color: 'var(--md-sys-color-warning)',
+      n: metrics.totalOpen,
+      label: 'open PRs',
+      caption: 'across all tracked repos',
+      icon: 'code',
+      color: 'var(--md-sys-color-primary)',
     },
     {
       n: metrics.mergedTodayCount,
       label: 'merged today',
-      color: 'var(--md-sys-color-secondary)',
+      caption: 'since midnight UTC',
+      icon: 'task_alt',
+      color: 'var(--md-sys-color-success)',
     },
-  ].filter(s => s.n > 0);
+    {
+      n: columns.needs_review.length,
+      label: 'need review',
+      caption: 'awaiting reviewers',
+      icon: 'rate_review',
+      color: 'var(--md-sys-color-tertiary)',
+    },
+    {
+      n: metrics.staleCount,
+      label: 'stale',
+      caption: 'open over 24 hours',
+      icon: 'hourglass_empty',
+      color: 'var(--md-sys-color-warning)',
+    },
+    {
+      n: columns.changes_requested.length,
+      label: 'changes requested',
+      caption: 'rework asked by reviewers',
+      icon: 'rate_review_off',
+      color: 'var(--md-sys-color-error)',
+    },
+  ];
 
   const minutes = Math.max(
     0,
@@ -158,7 +185,7 @@ function MosaicSlide({ data }: { data: GitHubApiResponse }) {
 
   return (
     <div className="flex h-full flex-col overflow-hidden">
-      {/* Giant clock left, headline number right */}
+      {/* Giant clock top-left, fortune top-right */}
       <div className="flex items-start justify-between gap-8">
         <div>
           <div className="text-[80px] leading-none tabular-nums text-[var(--md-sys-color-on-surface)]">
@@ -176,67 +203,53 @@ function MosaicSlide({ data }: { data: GitHubApiResponse }) {
             })}
           </div>
         </div>
-        <div className="flex flex-col items-end text-right">
-          <div className="flex items-center gap-4">
+        {fortune && (
+          <div className="flex max-w-[620px] flex-col items-start gap-3">
             <md-icon
-              className="text-[44px]"
-              style={{ color: 'var(--md-sys-color-secondary)' }}
+              className="text-[36px]"
+              style={{ color: 'var(--md-sys-color-tertiary)' }}
             >
-              rocket_launch
+              format_quote
             </md-icon>
-            <span className="text-[128px] leading-none tabular-nums text-[var(--md-sys-color-on-surface)]">
-              {metrics.readyToMergeCount}
-            </span>
+            <p className="text-[26px] leading-snug text-[var(--md-sys-color-on-surface)]">
+              {fortune.text}
+            </p>
+            {fortune.author && (
+              <span className="text-[18px] text-[var(--md-sys-color-on-surface-variant)]">
+                — {fortune.author}
+              </span>
+            )}
           </div>
-          <span className="mt-2 text-[24px] text-[var(--md-sys-color-on-surface-variant)]">
-            ready to merge
-          </span>
-        </div>
-      </div>
-
-      {/* One line of prose: state dots + counts */}
-      <div className="mt-6 flex items-center gap-8 text-[22px] text-[var(--md-sys-color-on-surface)]">
-        {states.map(s => (
-          <span key={s.label} className="flex items-center gap-3">
-            <span
-              className="h-3 w-3 shrink-0 rounded-full"
-              style={{ backgroundColor: s.color }}
-            />
-            <span>
-              <span className="font-semibold tabular-nums">{s.n}</span>{' '}
-              {s.label}
-            </span>
-          </span>
-        ))}
-        <span className="text-[var(--md-sys-color-on-surface-variant)]">
-          · {minutes}m ago
-        </span>
+        )}
       </div>
 
       {/* Repos as a plain list */}
-      <div className="mt-8 grid flex-1 auto-rows-min grid-cols-2 content-start gap-x-24 gap-y-5">
+      <div className="mt-8 flex flex-1 flex-col gap-y-5 overflow-hidden">
         {shownRepos.map(r => (
           <div
             key={r.fullName}
-            className="flex items-center justify-between gap-4"
+            className="flex items-center gap-6"
           >
             <span className="truncate text-[22px] font-medium text-[var(--md-sys-color-on-surface)]">
               {r.fullName}
             </span>
-            <span className="flex shrink-0 items-center gap-4">
+            <span className="flex shrink-0 items-center gap-5">
               {(
                 [
                   {
                     n: r.prs.filter(p => p.column === 'needs_review').length,
+                    label: 'need review',
                     color: 'var(--md-sys-color-primary)',
                   },
                   {
                     n: r.prs.filter(p => p.column === 'ready_to_merge').length,
+                    label: 'ready to merge',
                     color: 'var(--md-sys-color-success)',
                   },
                   {
                     n: r.prs.filter(p => p.column === 'changes_requested')
                       .length,
+                    label: 'changes requested',
                     color: 'var(--md-sys-color-error)',
                   },
                 ] as const
@@ -244,14 +257,14 @@ function MosaicSlide({ data }: { data: GitHubApiResponse }) {
                 .filter(s => s.n > 0)
                 .map(s => (
                   <span
-                    key={s.color}
-                    className="flex items-center gap-2 tabular-nums text-[20px] text-[var(--md-sys-color-on-surface)]"
+                    key={s.label}
+                    className="flex items-center gap-2 text-[18px] text-[var(--md-sys-color-on-surface)]"
                   >
                     <span
-                      className="h-3 w-3 rounded-full"
+                      className="h-3 w-3 shrink-0 rounded-full"
                       style={{ backgroundColor: s.color }}
                     />
-                    {s.n}
+                    <span className="tabular-nums">{s.n}</span> {s.label}
                   </span>
                 ))}
             </span>
@@ -262,6 +275,34 @@ function MosaicSlide({ data }: { data: GitHubApiResponse }) {
             +{hiddenRepos} more repos
           </span>
         )}
+      </div>
+
+      {/* Stats as one uniform row, bottom-left */}
+      <div className="mt-8 flex items-end gap-12">
+        {stats.map(s => (
+          <div key={s.label} className="flex flex-col">
+            <div className="flex items-center gap-3">
+              <md-icon
+                className="text-[28px]"
+                style={{ color: s.color }}
+              >
+                {s.icon}
+              </md-icon>
+              <span className="text-[44px] leading-none tabular-nums text-[var(--md-sys-color-on-surface)]">
+                {s.n}
+              </span>
+            </div>
+            <span className="ml-10 mt-1 text-[18px] text-[var(--md-sys-color-on-surface)]">
+              {s.label}
+            </span>
+            <span className="ml-10 text-[15px] text-[var(--md-sys-color-on-surface-variant)]">
+              {s.caption}
+            </span>
+          </div>
+        ))}
+        <span className="ml-auto mb-0 text-[18px] text-[var(--md-sys-color-on-surface-variant)]">
+          Updated {minutes}m ago
+        </span>
       </div>
     </div>
   );
@@ -407,7 +448,9 @@ interface SlideshowProps {
 export default function Slideshow({ data }: SlideshowProps) {
   const [active, setActive] = React.useState(false);
   const [index, setIndex] = React.useState(0);
+  const [leaving, setLeaving] = React.useState(false);
   const [events, setEvents] = React.useState<NotificationEvent[] | null>(null);
+  const [fortune, setFortune] = React.useState<Fortune | null>(null);
   const lastStartRef = React.useRef(0);
 
   // Deliberate input dismisses the slideshow early; manual start comes from
@@ -490,18 +533,26 @@ export default function Slideshow({ data }: SlideshowProps) {
     return () => clearInterval(id);
   }, [active, timing, slides.length]);
 
-  // End the slideshow once the last slide has had its full slideMs.
+  // Hold on the last slide for its full slideMs, then start the exit fade.
   React.useEffect(() => {
     if (!active || slides.length === 0 || index < slides.length - 1) return;
+    const id = setTimeout(() => setLeaving(true), timing.slideMs);
+    return () => clearTimeout(id);
+  }, [active, index, slides.length, timing]);
+
+  // After the fade, actually end the slideshow.
+  React.useEffect(() => {
+    if (!active || !leaving) return;
     const id = setTimeout(() => {
       console.log('[slideshow] round complete → back to board');
       setActive(false);
       setIndex(0);
-    }, timing.slideMs);
+      setLeaving(false);
+    }, EXIT_FADE_MS);
     return () => clearTimeout(id);
-  }, [active, index, slides.length, timing]);
+  }, [active, leaving]);
 
-  // Fresh events feed each time the slideshow starts.
+  // Fresh events feed and a fresh fortune each time the slideshow starts.
   React.useEffect(() => {
     if (!active) return;
     let cancelled = false;
@@ -514,6 +565,17 @@ export default function Slideshow({ data }: SlideshowProps) {
       } catch {
         // Ignore; the events slide simply won't appear.
       }
+      try {
+        const res = await fetch('/api/fortunes');
+        if (!res.ok) return;
+        const json = (await res.json()) as { fortunes: Fortune[] };
+        if (!cancelled && json.fortunes.length > 0) {
+          const pick = json.fortunes[Math.floor(Math.random() * json.fortunes.length)];
+          setFortune(pick);
+        }
+      } catch {
+        // Ignore; the Overview slide simply shows no quote.
+      }
     })();
     return () => {
       cancelled = true;
@@ -524,14 +586,20 @@ export default function Slideshow({ data }: SlideshowProps) {
   const slide = slides[index % slides.length];
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-[var(--md-sys-color-surface)] px-12 py-8">
-      <style>{`@keyframes gdSlideFade { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } } .gd-slide { animation: gdSlideFade 0.5s ease; }`}</style>
+    <div
+      className={`fixed inset-0 z-50 flex flex-col bg-[var(--md-sys-color-surface)] px-12 py-8 ${
+        leaving ? 'gd-leaving' : ''
+      }`}
+    >
+      <style>{`@keyframes gdSlideFade { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } } .gd-slide { animation: gdSlideFade 0.5s ease; } @keyframes gdExitFade { from { opacity: 1; } to { opacity: 0; } } .gd-leaving { animation: gdExitFade ${EXIT_FADE_MS}ms ease-in forwards; }`}</style>
 
       <div
         key={index}
         className={`gd-slide flex flex-1 flex-col py-6 ${slide.kind === 'metrics' ? 'overflow-hidden' : 'justify-center'}`}
       >
-        {slide.kind === 'metrics' && <MosaicSlide data={slide.data} />}
+        {slide.kind === 'metrics' && (
+          <MosaicSlide data={slide.data} fortune={fortune} />
+        )}
         {slide.kind === 'pr' && <PRSpotlight slide={slide} />}
         {slide.kind === 'merged' && <MergedSlide prs={slide.prs} />}
         {slide.kind === 'events' && <EventsSlide events={slide.events} />}
