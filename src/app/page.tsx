@@ -1,7 +1,6 @@
 'use client';
 
 import * as React from 'react';
-import '@material/web/progress/linear-progress.js';
 import '@material/web/icon/icon.js';
 import '@material/web/labs/card/elevated-card.js';
 import KanbanBoard from '@/components/kanban/KanbanBoard';
@@ -59,7 +58,10 @@ export default function Home() {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center gap-6 bg-[var(--md-sys-color-surface)] p-6 text-center">
         <div className="w-72">
-          <md-linear-progress indeterminate suppressHydrationWarning></md-linear-progress>
+          <svg className="wavy-progress" viewBox="0 0 120 8" preserveAspectRatio="none" role="progressbar" aria-label="Loading">
+            <path className="wavy-track" pathLength="1" d="M0,4Q5,1 10,4Q15,7 20,4Q25,1 30,4Q35,7 40,4Q45,1 50,4Q55,7 60,4Q65,1 70,4Q75,7 80,4Q85,1 90,4Q95,7 100,4Q105,1 110,4Q115,7 120,4" />
+            <path className="wavy-indicator" pathLength="1" d="M0,4Q5,1 10,4Q15,7 20,4Q25,1 30,4Q35,7 40,4Q45,1 50,4Q55,7 60,4Q65,1 70,4Q75,7 80,4Q85,1 90,4Q95,7 100,4Q105,1 110,4Q115,7 120,4" />
+          </svg>
         </div>
         <p className="md-typescale-label-large uppercase tracking-widest text-[var(--md-sys-color-on-surface-variant)]">
           Loading dashboard

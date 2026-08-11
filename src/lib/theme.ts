@@ -33,6 +33,30 @@ export const THEMES: ThemeOption[] = [
     description: 'Classic low-glare cyan and blue',
     swatch: ['#268bd2', '#2aa198', '#6c71c4', '#dc322f', '#859900', '#b58900'],
   },
+  {
+    id: 'nord',
+    label: 'Nord',
+    description: 'Arctic blue-gray, low saturation',
+    swatch: ['#88c0d0', '#81a1c1', '#b48ead', '#bf616a', '#a3be8c', '#ebcb8b'],
+  },
+  {
+    id: 'dracula',
+    label: 'Dracula',
+    description: 'Deep purple, vibrant candy accents',
+    swatch: ['#bd93f9', '#8be9fd', '#ff79c6', '#ff5555', '#50fa7b', '#f1fa8c'],
+  },
+  {
+    id: 'gruvbox',
+    label: 'Gruvbox Dark',
+    description: 'Warm retro, earthy tones',
+    swatch: ['#83a598', '#d3869b', '#fabd2f', '#fb4934', '#b8bb26', '#fe8019'],
+  },
+  {
+    id: 'tokyonight',
+    label: 'Tokyo Night',
+    description: 'Deep indigo, soft blue and purple',
+    swatch: ['#7aa2f7', '#bb9af7', '#7dcfff', '#f7768e', '#9ece6a', '#e0af68'],
+  },
 ];
 
 export function isValidTheme(id: string | null | undefined): id is string {
