@@ -2,6 +2,7 @@ import { NextResponse, NextRequest } from 'next/server';
 import { GitHubApiResponse, KanbanColumns, PullRequest, User } from '@/types/github';
 import { isS3Configured, putJson } from '@/lib/s3';
 import { enrichPRs, deriveColumn, getAccessibleRepos } from '@/lib/githubEnrich';
+import { getWebhookScopeRepos } from '@/lib/notificationHub';
 import { requireAuth } from '@/lib/auth';
 
 function parseIncludedRepos(request: NextRequest): string[] {
@@ -13,15 +14,11 @@ function parseIncludedRepos(request: NextRequest): string[] {
     .filter(Boolean);
 }
 
-// Scope a search query: explicit repos first, else fall back to the PAT's orgs.
-function buildSearchQuery(base: string, includedRepos: string[], orgs: string[]): string {
-  if (includedRepos.length > 0) {
-    return base + includedRepos.map(repo => `+repo:${repo}`).join('');
-  }
-  if (orgs.length > 0) {
-    return base + orgs.map(org => `+org:${org}`).join('');
-  }
-  return base;
+// Scope a search query: explicit repos first, else fall back to the repos
+// resolved from webhook scope / accessible-repos (all are owner/repo names).
+function buildSearchQuery(base: string, includedRepos: string[], fallbackRepos: string[]): string {
+  const repos = includedRepos.length > 0 ? includedRepos : fallbackRepos;
+  return base + repos.map(repo => `+repo:${repo}`).join('');
 }
 
 interface GitHubIssueSearchItem {
@@ -199,7 +196,15 @@ export async function GET(request: NextRequest) {
   if (pat) {
     try {
       // Live GitHub API integration
-      const accessibleRepos = includedRepos.length === 0 ? await getAccessibleRepos() : [];
+      // Default scope when no repos are selected: the webhook-covered repos
+      // (repo hook = that repo, org hook = all org repos), else all accessible.
+      const accessibleRepos =
+        includedRepos.length === 0
+          ? await (async () => {
+              const webhookScope = await getWebhookScopeRepos();
+              return webhookScope.length > 0 ? webhookScope : await getAccessibleRepos();
+            })()
+          : [];
       const searchHeaders = {
         Authorization: `Bearer ${pat}`,
         Accept: 'application/vnd.github.v3+json',

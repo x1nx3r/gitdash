@@ -9,6 +9,7 @@ import '@material/web/button/filled-button.js';
 import '@material/web/labs/card/elevated-card.js';
 import RepoSettingsSection from '@/components/settings/RepoSettingsSection';
 import SoundSettingsForm from '@/components/settings/SoundSettingsForm';
+import WebhookSetupCard from '@/components/settings/WebhookSetupCard';
 import M3TextField from '@/components/notifications/M3TextField';
 import { User, UserListResponse } from '@/types/github';
 import { NotificationSettings } from '@/types/notifications';
@@ -76,6 +77,10 @@ export default function SettingsPage() {
       <main className="mx-auto flex w-full max-w-2xl flex-col gap-6 p-4 lg:p-8">
         <SectionCard title="Notification sounds" icon="notifications">
           <UserSoundsPanel />
+        </SectionCard>
+
+        <SectionCard title="GitHub webhooks" icon="webhook">
+          <WebhookSetupCard />
         </SectionCard>
 
         <SectionCard title="Repositories" icon="folder">

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import {
   appendEvent,
   buildEvent,
+  observeHookEvent,
   toPrSnapshot,
   verifySignature,
   webhooksConfigured,
@@ -61,13 +62,22 @@ export async function POST(request: Request) {
   }
 
   try {
+    // Classify the delivering hook (repo vs org) so the dashboard can scope
+    // itself to exactly what the webhook covers.
+    const hookId = request.headers.get('x-github-hook-id') ?? '';
+    const observe = async (fullName: string) => {
+      if (hookId) await observeHookEvent(hookId, fullName);
+    };
+
     if (event === 'pull_request' && payload.pull_request) {
       const pr = payload.pull_request;
       const action = (payload as GitHubPullRequestEvent).action;
       if (PR_EVENTS[action ?? '']) {
         await appendEvent(buildEvent('new_pr', toPrSnapshot(pr)));
+        await observe(pr.repository?.full_name ?? '');
       } else if (action === 'closed' && pr.merged) {
         await appendEvent(buildEvent('merged', toPrSnapshot(pr)));
+        await observe(pr.repository?.full_name ?? '');
       }
     } else if (event === 'pull_request_review') {
       const rev = payload as GitHubReviewEvent;
@@ -75,8 +85,10 @@ export async function POST(request: Request) {
         const state = rev.review.state;
         if (state === 'approved') {
           await appendEvent(buildEvent('ready_to_merge', toPrSnapshot(rev.pull_request)));
+          await observe(rev.pull_request.repository?.full_name ?? '');
         } else if (state === 'changes_requested') {
           await appendEvent(buildEvent('changes_requested', toPrSnapshot(rev.pull_request)));
+          await observe(rev.pull_request.repository?.full_name ?? '');
         }
       }
     }
