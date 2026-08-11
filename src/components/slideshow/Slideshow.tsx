@@ -36,7 +36,7 @@ const DISMISS_EVENTS = ['mousedown', 'keydown', 'touchstart', 'wheel'] as const;
 
 type Slide =
   | { kind: 'metrics'; data: GitHubApiResponse }
-  | { kind: 'pr'; pr: PullRequest; accent: string; columnLabel: string; columnIcon: string }
+  | { kind: 'pr'; pr: PullRequest; accent: string; onAccent: string; columnLabel: string; columnIcon: string }
   | { kind: 'merged'; prs: PullRequest[] }
   | { kind: 'events'; events: NotificationEvent[] };
 
@@ -45,16 +45,19 @@ const COLUMN_META = {
     label: 'Needs review',
     icon: 'rate_review',
     accent: 'var(--md-sys-color-primary)',
+    onAccent: 'var(--md-sys-color-on-primary)',
   },
   changes_requested: {
     label: 'Changes requested',
     icon: 'rate_review_off',
     accent: 'var(--md-sys-color-error)',
+    onAccent: 'var(--md-sys-color-on-error)',
   },
   ready_to_merge: {
     label: 'Ready to merge',
     icon: 'rocket_launch',
     accent: 'var(--md-sys-color-secondary)',
+    onAccent: 'var(--md-sys-color-on-secondary)',
   },
 } as const;
 
@@ -70,7 +73,7 @@ function buildSlides(data: GitHubApiResponse, events: NotificationEvent[] | null
   for (const key of ['needs_review', 'changes_requested', 'ready_to_merge'] as const) {
     const meta = COLUMN_META[key];
     for (const pr of data.columns[key]) {
-      slides.push({ kind: 'pr', pr, accent: meta.accent, columnLabel: meta.label, columnIcon: meta.icon });
+      slides.push({ kind: 'pr', pr, accent: meta.accent, onAccent: meta.onAccent, columnLabel: meta.label, columnIcon: meta.icon });
     }
   }
   if (data.columns.merged_today.length > 0) {
@@ -265,7 +268,7 @@ function MosaicSlide({ data }: { data: GitHubApiResponse }) {
 }
 
 function PRSpotlight({ slide }: { slide: Extract<Slide, { kind: 'pr' }> }) {
-  const { pr, accent, columnLabel, columnIcon } = slide;
+  const { pr, accent, onAccent, columnLabel, columnIcon } = slide;
   const hoursOpen = Math.max(
     1,
     Math.round((new Date().getTime() - new Date(pr.createdAt).getTime()) / 3_600_000)
@@ -275,7 +278,7 @@ function PRSpotlight({ slide }: { slide: Extract<Slide, { kind: 'pr' }> }) {
       <div className="flex flex-wrap items-center justify-center gap-4">
         <span
           className="flex items-center gap-2 rounded-full px-4 py-1.5"
-          style={{ backgroundColor: accent, color: '#fff' }}
+          style={{ backgroundColor: accent, color: onAccent }}
         >
           <md-icon style={{ '--md-icon-size': '20px' }}>{columnIcon}</md-icon>
           <span className="md-typescale-label-large">{columnLabel}</span>
