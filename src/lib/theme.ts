@@ -57,6 +57,12 @@ export const THEMES: ThemeOption[] = [
     description: 'Deep indigo, soft blue and purple',
     swatch: ['#7aa2f7', '#bb9af7', '#7dcfff', '#f7768e', '#9ece6a', '#e0af68'],
   },
+  {
+    id: 'oled',
+    label: 'OLED Pure Black',
+    description: 'True black, pixels off, phosphor glow',
+    swatch: ['#000000', '#5fe0a3', '#6cc8ff', '#c792ea', '#ff6b6b', '#e3b341'],
+  },
 ];
 
 export function isValidTheme(id: string | null | undefined): id is string {
