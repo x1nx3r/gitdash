@@ -30,13 +30,13 @@ export default function Home() {
   // still in flight; the older response must never clobber the newer one.
   const fetchSeq = React.useRef(0);
 
-  const fetchKanbanData = React.useCallback(async () => {
+  const fetchKanbanData = React.useCallback(async (force = false) => {
     const seq = ++fetchSeq.current;
     try {
       const reposParam = selectedRef.current.join(',');
       const url = reposParam
-        ? `/api/github/prs?repos=${encodeURIComponent(reposParam)}`
-        : '/api/github/prs';
+        ? `/api/github/prs?repos=${encodeURIComponent(reposParam)}${force ? '&force=1' : ''}`
+        : `/api/github/prs${force ? '?force=1' : ''}`;
       const res = await fetch(url);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const json: GitHubApiResponse = await res.json();
@@ -61,12 +61,14 @@ export default function Home() {
     if (mounted) fetchKanbanData();
   }, [mounted, selected, fetchKanbanData]);
 
-  // SSE nudge: a webhook delivery tells us the board changed; refetch
-  // immediately (the server cache makes this cheap). The 30s poll stays
-  // as the fallback when the stream is down.
+  // SSE nudge: an events message is the instant proof something changed, so
+  // refetch the board (forced — the webhook already warmed the cache, and
+  // skipping it guarantees current state). The 'board' message is the
+  // pre-chain fallback; the 30s poll covers a dead stream.
   React.useEffect(() => {
     const unsubscribe = subscribeStream(msg => {
-      if (msg.type === 'board') void fetchKanbanData();
+      if (msg.type === 'events') void fetchKanbanData(true);
+      else if (msg.type === 'board') void fetchKanbanData();
     });
     return unsubscribe;
   }, [fetchKanbanData]);
@@ -103,7 +105,7 @@ export default function Home() {
                 {error}
               </p>
             </div>
-            <md-filled-button onClick={fetchKanbanData}>Retry</md-filled-button>
+            <md-filled-button onClick={() => void fetchKanbanData()}>Retry</md-filled-button>
           </div>
         </md-elevated-card>
       </div>

@@ -75,7 +75,12 @@ export async function getBoardForScope(
 
 /** Rebuild every active scope that includes the repo (webhook delivery). */
 export async function refreshBoardsForRepo(repo: string): Promise<void> {
-  for (const key of getScopesIncludingRepo(repo)) {
+  const scopes = new Set(getScopesIncludingRepo(repo));
+  // The no-repo scope ("show everything") doesn't contain any repo string,
+  // so it never matches the filter — rebuild it too when someone is polling
+  // it, or its stale cache answers nudge refetches for up to 30s.
+  if (activeScopes().includes('')) scopes.add('');
+  for (const key of scopes) {
     try {
       await getBoardForScope(key.split(','), true);
     } catch (e) {

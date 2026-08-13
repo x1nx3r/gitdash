@@ -116,14 +116,12 @@ export async function POST(request: Request) {
     }
 
     // Board refresh: drop the stale enrichment for the affected PR, rebuild
-    // every active scope that includes its repo, and only then nudge browsers
-    // to refetch — a nudge before the rebuild would hit the still-fresh stale
-    // cache. Events broadcast immediately (they come from S3, already stored).
+    // every active scope that includes its repo. Clients refetch on the
+    // events message (instant, stored data) with force — no separate nudge
+    // timing race. Events broadcast immediately, right after storage.
     if (handledPR) {
       invalidateEnrichment(handledPR.fullName, handledPR.number);
-      void refreshBoardsForRepo(handledPR.fullName).finally(() => {
-        broadcastSSE({ type: 'board' });
-      });
+      void refreshBoardsForRepo(handledPR.fullName);
       broadcastSSE({
         type: 'events',
         configured: true,

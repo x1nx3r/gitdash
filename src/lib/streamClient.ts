@@ -27,6 +27,11 @@ function ensureConnected(): void {
     }
     for (const l of listeners) l(msg);
   };
+  // A (re)connection may have missed nudges while the stream was down;
+  // refetch boards immediately instead of waiting for the next poll.
+  es.onopen = () => {
+    for (const l of listeners) l({ type: 'board' });
+  };
   // onerror: EventSource reconnects with backoff on its own.
 }
 
