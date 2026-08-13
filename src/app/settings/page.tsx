@@ -15,6 +15,7 @@ import { User, UserListResponse } from '@/types/github';
 import { NotificationSettings } from '@/types/notifications';
 import { Fortune } from '@/lib/fortunes';
 import { THEMES, applyTheme, readTheme, subscribeTheme } from '@/lib/theme';
+import { MAX_ZOOM, MIN_ZOOM, readZoom, setZoom, subscribeZoom } from '@/lib/zoom';
 import {
   MIN_INTERVAL_SEC,
   MIN_SLIDE_SEC,
@@ -91,6 +92,10 @@ export default function SettingsPage() {
           <div className="flex flex-col gap-6">
             <SectionCard title="Appearance" icon="palette">
               <ThemePanel />
+            </SectionCard>
+
+            <SectionCard title="Display" icon="zoom_in">
+              <ZoomPanel />
             </SectionCard>
 
             <SectionCard title="Slideshow" icon="slideshow">
@@ -412,6 +417,45 @@ function FortunesPanel() {
         >
           {state === 'saving' ? 'Saving…' : 'Save'}
         </md-filled-button>
+      </div>
+    </div>
+  );
+}
+
+function ZoomPanel() {
+  const zoom = React.useSyncExternalStore(subscribeZoom, readZoom, () => 1);
+
+  return (
+    <div className="flex flex-col gap-2">
+      <p className="md-typescale-label-small text-[var(--md-sys-color-on-surface-variant)]">
+        Browser-zoom-style scaling for the whole app. Handy when the TV
+        renders the dashboard too small or too large.
+      </p>
+      <div className="flex items-center justify-between">
+        <span className="md-typescale-body-medium text-[var(--md-sys-color-on-surface)]">
+          Zoom
+        </span>
+        <span className="md-typescale-label-medium tabular-nums text-[var(--md-sys-color-on-surface-variant)]">
+          {zoom.toFixed(1)}x
+        </span>
+      </div>
+      <div className="flex items-center gap-3">
+        <input
+          type="range"
+          min={MIN_ZOOM}
+          max={MAX_ZOOM}
+          step={0.1}
+          value={zoom}
+          onChange={e => setZoom(Number(e.target.value))}
+          className="h-2 w-full accent-[var(--md-sys-color-primary)]"
+        />
+        <md-text-button
+          onClick={() => setZoom(1)}
+          disabled={zoom === 1}
+          suppressHydrationWarning
+        >
+          Reset
+        </md-text-button>
       </div>
     </div>
   );
