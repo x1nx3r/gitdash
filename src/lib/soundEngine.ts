@@ -34,17 +34,25 @@ function getContext(): AudioContext | null {
   return ctx;
 }
 
+/** True when this browser has no AudioContext at all (rare, mostly TVs). */
+export function isAudioUnsupported(): boolean {
+  if (typeof window === 'undefined') return false;
+  return !window.AudioContext && !(window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+}
+
 /** Call from a user gesture to satisfy the autoplay policy. */
 export function unlockAudio(): void {
   const c = getContext();
   if (!c) return;
   if (c.state === 'suspended') {
+    setBlocked(true);
     void c.resume().then(
       () => setBlocked(false),
       () => setBlocked(true)
     );
+  } else {
+    setBlocked(false);
   }
-  setBlocked(false);
 }
 
 function tone(
@@ -86,10 +94,13 @@ const TONES: Record<Exclude<ToneId, 'none'>, (c: AudioContext, v: number) => voi
 export function playSound(id: ToneId, volume: number): void {
   if (id === 'none' || volume <= 0) return;
   const c = getContext();
-  if (!c) return;
+  if (!c) {
+    setBlocked(true);
+    return;
+  }
   if (c.state === 'suspended') {
     setBlocked(true);
-    void c.resume();
+    void c.resume().catch(() => {});
   } else {
     setBlocked(false);
   }

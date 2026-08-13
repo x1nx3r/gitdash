@@ -214,6 +214,8 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
   );
 
   React.useEffect(() => {
+    // If the user already interacted with this page, start audio now.
+    unlockAudio();
     const unlock = () => unlockAudio();
     for (const ev of ['pointerdown', 'keydown', 'touchstart', 'mousedown', 'click'] as const) {
       window.addEventListener(ev, unlock);

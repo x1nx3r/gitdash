@@ -10,6 +10,7 @@ import '@material/web/labs/card/elevated-card.js';
 import '@material/web/divider/divider.js';
 import { useNotifications } from './NotificationProvider';
 import {
+  isAudioUnsupported,
   isSoundBlocked,
   subscribeSoundBlocked,
   unlockAudio,
@@ -65,6 +66,7 @@ export default function NotificationBell() {
     isSoundBlocked,
     () => false
   );
+  const audioUnsupported = React.useState(() => isAudioUnsupported())[0];
 
   React.useEffect(() => {
     if (!open) return;
@@ -150,7 +152,17 @@ export default function NotificationBell() {
         </>
       )}
 
-      {configured && soundBlocked && (
+      {configured && audioUnsupported && (
+        <div
+          className="flex items-center gap-1.5 rounded-full bg-[var(--md-sys-color-error-container)] px-3 py-1.5 text-[var(--md-sys-color-on-error-container)] md-typescale-label-small shadow"
+          suppressHydrationWarning
+        >
+          <md-icon style={{ fontSize: '16px' }}>volume_off</md-icon>
+          Sound not supported on this browser
+        </div>
+      )}
+
+      {configured && !audioUnsupported && soundBlocked && (
         <button
           type="button"
           onClick={unlockAudio}

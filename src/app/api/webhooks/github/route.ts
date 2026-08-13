@@ -20,6 +20,7 @@ const PR_EVENTS: Record<string, boolean> = {
 
 interface GitHubPullRequestEvent {
   action?: string;
+  repository?: { full_name?: string };
   pull_request?: {
     id?: number;
     number?: number;
@@ -27,13 +28,13 @@ interface GitHubPullRequestEvent {
     html_url?: string;
     merged?: boolean;
     draft?: boolean;
-    repository?: { full_name?: string };
     user?: { login?: string; avatar_url?: string };
   };
 }
 
 interface GitHubReviewEvent {
   action?: string;
+  repository?: { full_name?: string };
   review?: {
     state?: string;
   };
@@ -79,13 +80,17 @@ export async function POST(request: Request) {
     if (event === 'pull_request' && payload.pull_request) {
       const pr = payload.pull_request;
       const action = (payload as GitHubPullRequestEvent).action;
-      const fullName = pr.repository?.full_name ?? '';
+      // `repository` lives on the event root; the PR object only carries
+      // base.repo/head.repo. Snapshot with the root's repo so board
+      // rebuilds and hook scope resolve to the real full name.
+      const repository = (payload as GitHubPullRequestEvent).repository;
+      const fullName = repository?.full_name ?? '';
       if (PR_EVENTS[action ?? '']) {
-        await appendEvent(buildEvent('new_pr', toPrSnapshot(pr)));
+        await appendEvent(buildEvent('new_pr', toPrSnapshot({ ...pr, repository })));
         await observe(fullName);
         handledPR = { fullName, number: pr.number ?? 0 };
       } else if (action === 'closed' && pr.merged) {
-        await appendEvent(buildEvent('merged', toPrSnapshot(pr)));
+        await appendEvent(buildEvent('merged', toPrSnapshot({ ...pr, repository })));
         await observe(fullName);
         handledPR = { fullName, number: pr.number ?? 0 };
       }
@@ -93,13 +98,17 @@ export async function POST(request: Request) {
       const rev = payload as GitHubReviewEvent;
       if (rev.review && rev.pull_request) {
         const state = rev.review.state;
-        const fullName = rev.pull_request.repository?.full_name ?? '';
+        const fullName = rev.repository?.full_name ?? '';
         if (state === 'approved') {
-          await appendEvent(buildEvent('ready_to_merge', toPrSnapshot(rev.pull_request)));
+          await appendEvent(
+            buildEvent('ready_to_merge', toPrSnapshot({ ...rev.pull_request, repository: rev.repository }))
+          );
           await observe(fullName);
           handledPR = { fullName, number: rev.pull_request.number ?? 0 };
         } else if (state === 'changes_requested') {
-          await appendEvent(buildEvent('changes_requested', toPrSnapshot(rev.pull_request)));
+          await appendEvent(
+            buildEvent('changes_requested', toPrSnapshot({ ...rev.pull_request, repository: rev.repository }))
+          );
           await observe(fullName);
           handledPR = { fullName, number: rev.pull_request.number ?? 0 };
         }
