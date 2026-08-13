@@ -15,9 +15,10 @@ export default function M3Switch({ checked, onCheckedChange, ariaLabel }: M3Swit
   React.useEffect(() => {
     const el = ref.current;
     if (!el) return;
-    (el as unknown as { checked: boolean }).checked = checked;
+    // md-switch exposes state via `selected`, not `checked`.
+    (el as unknown as { selected: boolean }).selected = checked;
     const handler = (e: Event) =>
-      onCheckedChange((e.target as unknown as { checked: boolean }).checked);
+      onCheckedChange((e.target as unknown as { selected: boolean }).selected);
     el.addEventListener('change', handler);
     return () => el.removeEventListener('change', handler);
   }, [checked, onCheckedChange]);
