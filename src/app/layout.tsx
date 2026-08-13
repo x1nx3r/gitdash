@@ -4,6 +4,7 @@ import "./globals.css";
 import Providers from "@/components/notifications/Providers";
 import AuthGate from "@/components/auth/AuthGate";
 import ZoomScale from "@/components/ZoomScale";
+import Clock from "@/components/Clock";
 
 const roboto = Roboto({
   weight: ["400", "500"],
@@ -35,6 +36,7 @@ export default function RootLayout({
           }}
         />
         <ZoomScale />
+        <Clock />
         <AuthGate>
           <Providers>{children}</Providers>
         </AuthGate>

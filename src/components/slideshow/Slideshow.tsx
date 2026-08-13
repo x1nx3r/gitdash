@@ -12,6 +12,7 @@ import {
   subscribeSlideTiming,
 } from '@/lib/slideshowTiming';
 import { Fortune } from '@/lib/fortunes';
+import { setSlideshowActive } from '@/lib/slideshowActive';
 import {
   cacheFortunes,
   pickFortune,
@@ -520,6 +521,13 @@ export default function Slideshow({ data }: SlideshowProps) {
     return () => {
       cancelled = true;
     };
+  }, [active]);
+
+  // Mirror the active state so overlays (e.g. the wallboard clock) can hide
+  // while the slideshow owns the screen.
+  React.useEffect(() => {
+    setSlideshowActive(active);
+    return () => setSlideshowActive(false);
   }, [active]);
 
   if (!active || !data || slides.length === 0) return null;
