@@ -142,14 +142,6 @@ export default function NotificationBell() {
 
       <div className="flex flex-row items-center gap-2">
         <md-icon-button
-          aria-label="Demo card animation"
-          onClick={() => window.dispatchEvent(new Event('gitdash:demo-animation'))}
-          suppressHydrationWarning
-        >
-          <md-icon>shuffle</md-icon>
-        </md-icon-button>
-
-        <md-icon-button
           aria-label="Start slideshow"
           onClick={() => window.dispatchEvent(new Event('gitdash:start-slideshow'))}
           suppressHydrationWarning
