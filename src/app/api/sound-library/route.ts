@@ -66,8 +66,13 @@ export async function POST(request: Request) {
   const ext = EXT_BY_TYPE[baseType] ?? 'bin';
   const id = randomUUID();
   const key = `sounds/library/${id}.${ext}`;
-  const name =
-    request.headers.get('x-file-name')?.trim() || `${id}.${ext}`;
+  let name = request.headers.get('x-file-name')?.trim() || '';
+  try {
+    name = decodeURIComponent(name);
+  } catch {
+    // Malformed encoding: keep the raw value.
+  }
+  if (!name) name = `${id}.${ext}`;
 
   await ensureBucket();
   await putBlob(key, bytes, baseType);

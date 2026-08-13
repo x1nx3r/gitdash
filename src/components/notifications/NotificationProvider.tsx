@@ -16,6 +16,7 @@ const STORAGE_KEY = 'gitdash.notifications.v1';
 const SEEN_EVENTS_KEY = 'gitdash.seenEvents.v1';
 const MAX_SEEN = 500;
 const EVENTS_POLL_MS = 30_000;
+const FRESH_WINDOW_MS = 90_000;
 
 const DEFAULT_EVENTS: Record<NotificationEventType, boolean> = {
   new_pr: true,
@@ -153,12 +154,19 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
 
       const fresh: NotificationEvent[] = [];
       const newlySeen: string[] = [];
+      // Only events that just happened (within the freshness window) are
+      // genuine new events. Older unseen ones (first load in a browser,
+      // reconnect after downtime) reconcile into the list silently instead of
+      // replaying the whole backlog as sound.
+      const now = Date.now();
+      const soundworthy: NotificationEvent[] = [];
       for (const ev of json.events) {
         const id = `${ev.timestamp}-${String(ev.pr.id)}-${ev.type}`;
         if (!seenIdsRef.current.has(id)) {
           seenIdsRef.current.add(id);
           newlySeen.push(id);
           fresh.push(ev);
+          if (now - ev.timestamp <= FRESH_WINDOW_MS) soundworthy.push(ev);
         }
       }
       if (fresh.length === 0) return;
@@ -175,7 +183,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
         .slice(-MAX_HISTORY);
       setNotifications(prevList => [...prevList, ...items].slice(-MAX_HISTORY));
       unlockAudio();
-      void playForEvents(fresh);
+      void playForEvents(soundworthy);
     },
     [playForEvents, setSeenIds]
   );
