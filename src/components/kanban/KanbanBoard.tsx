@@ -4,6 +4,7 @@ import * as React from 'react';
 import '@material/web/icon/icon.js';
 import PRCard from './PRCard';
 import { KanbanColumns } from '@/types/github';
+import { readZoom, subscribeZoom } from '@/lib/zoom';
 
 interface KanbanBoardProps {
   columns: KanbanColumns;
@@ -62,9 +63,29 @@ const TONE_ON_CONTAINER: Record<ColumnConfig['tone'], string> = {
   success: 'var(--md-sys-color-on-success-container)',
 };
 
+function getWidth(): number | null {
+  return typeof window === 'undefined' ? null : window.innerWidth;
+}
+
+function subscribeWidth(onChange: () => void): () => void {
+  window.addEventListener('resize', onChange);
+  return () => window.removeEventListener('resize', onChange);
+}
+
 export default function KanbanBoard({ columns }: KanbanBoardProps) {
+  // Breakpoints must see the zoom-adjusted viewport: CSS zoom does not
+  // re-evaluate media queries, so 0.5x would never flip the grid to 4
+  // columns the way browser zoom does. Effective width = real / zoom.
+  const zoom = React.useSyncExternalStore(subscribeZoom, readZoom, () => 1);
+  const width = React.useSyncExternalStore(subscribeWidth, getWidth, () => null);
+  const effectiveW = width !== null ? width / zoom : 0;
+  const cols = effectiveW >= 1280 ? 4 : effectiveW >= 640 ? 2 : 1;
+
   return (
-    <div className="grid h-full grid-cols-1 gap-5 p-5 sm:grid-cols-2 xl:grid-cols-4">
+    <div
+      className="grid h-full grid-cols-1 gap-5 p-5"
+      style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}
+    >
       {columnConfigs.map(col => {
         const prs = columns[col.key] || [];
 
