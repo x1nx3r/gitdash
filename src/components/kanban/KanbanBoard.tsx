@@ -2,6 +2,7 @@
 
 import * as React from 'react';
 import '@material/web/icon/icon.js';
+import { AnimatePresence, LayoutGroup, motion } from 'motion/react';
 import PRCard from './PRCard';
 import { KanbanColumns } from '@/types/github';
 import { readZoom, subscribeZoom } from '@/lib/zoom';
@@ -81,19 +82,30 @@ export default function KanbanBoard({ columns }: KanbanBoardProps) {
   const effectiveW = width !== null ? width / zoom : 0;
   const cols = effectiveW >= 1280 ? 4 : effectiveW >= 640 ? 2 : 1;
 
-  return (
-    <div
-      className="grid h-full grid-cols-1 gap-5 p-5"
-      style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}
-    >
-      {columnConfigs.map(col => {
-        const prs = columns[col.key] || [];
+  // Deterministic per-PR entry tilt so cards land at slightly different
+  // angles; springs do the rest of the "jumpy" work.
+  const tilt = (id: string | number) => (Number(id) % 5) * 3 - 6;
 
-        return (
-          <section
-            key={col.key}
-            className="flex min-h-[70vh] flex-col rounded-[var(--md-sys-shape-corner-extra-large)] bg-[var(--md-sys-color-surface-container)] p-4"
-          >
+  const spring = {
+    type: 'spring',
+    stiffness: 260,
+    damping: 14,
+  } as const;
+
+  return (
+    <LayoutGroup>
+      <div
+        className="grid h-full grid-cols-1 gap-5 p-5"
+        style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}
+      >
+        {columnConfigs.map(col => {
+          const prs = columns[col.key] || [];
+
+          return (
+            <section
+              key={col.key}
+              className="flex min-h-[70vh] flex-col rounded-[var(--md-sys-shape-corner-extra-large)] bg-[var(--md-sys-color-surface-container)] p-4"
+            >
             {/* Column header */}
             <header className="mb-4 flex items-center justify-between rounded-[var(--md-sys-shape-corner-medium)] bg-[var(--md-sys-color-surface-container-high)] px-4 py-3">
               <div className="flex items-center gap-2.5">
@@ -125,12 +137,26 @@ export default function KanbanBoard({ columns }: KanbanBoardProps) {
                   No items
                 </div>
               ) : (
-                prs.map(pr => <PRCard key={pr.id} pr={pr} />)
+                <AnimatePresence mode="popLayout">
+                  {prs.map(pr => (
+                    <motion.div
+                      key={pr.id}
+                      layout
+                      initial={{ opacity: 0, scale: 1.2, rotate: tilt(pr.id), y: 24 }}
+                      animate={{ opacity: 1, scale: 1, rotate: 0, y: 0 }}
+                      exit={{ opacity: 0, scale: 1.25, rotate: -tilt(pr.id), transition: { duration: 0.18 } }}
+                      transition={spring}
+                    >
+                      <PRCard pr={pr} />
+                    </motion.div>
+                  ))}
+                </AnimatePresence>
               )}
             </div>
           </section>
         );
       })}
-    </div>
+      </div>
+    </LayoutGroup>
   );
 }
