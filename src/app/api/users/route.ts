@@ -96,6 +96,37 @@ async function fetchAllRepos(pat: string): Promise<Repo[]> {
   }
 }
 
+async function fetchContributorsFor(repos: string[], pat: string): Promise<User[]> {
+  const batch = await Promise.all(
+    repos.slice(0, 20).map(async fullName => {
+      try {
+        const res = await fetch(
+          `https://api.github.com/repos/${fullName}/contributors?per_page=100`,
+          { headers: { Authorization: `Bearer ${pat}` } }
+        );
+        if (!res.ok) return [];
+        const data = (await res.json()) as {
+          login: string;
+          avatar_url?: string;
+          name?: string;
+          type?: string;
+        }[];
+        if (!Array.isArray(data)) return [];
+        return data
+          .filter(c => c?.type !== 'Bot')
+          .map(c => ({
+            login: c.login,
+            name: c.name,
+            avatarUrl: c.avatar_url,
+          }));
+      } catch {
+        return [];
+      }
+    })
+  );
+  return mergeUsers([batch.flat()]);
+}
+
 export async function GET(request: Request) {
   const denied = requireAuth(request);
   if (denied) return denied;
@@ -103,6 +134,29 @@ export async function GET(request: Request) {
     return NextResponse.json({
       users: MOCK_USERS,
       isMockData: true,
+      updatedAt: new Date().toISOString(),
+    } satisfies UserListResponse);
+  }
+
+  // Scoped mode: contributors of exactly the requested repos (the board's
+  // selected set), fetched live — no 1h cache, one GitHub call per repo.
+  const reposParam = new URL(request.url).searchParams.get('repos');
+  const scoped = reposParam
+    ? reposParam.split(',').map(s => s.trim()).filter(Boolean)
+    : [];
+  if (scoped.length > 0) {
+    const pat = process.env.GITHUB_PAT;
+    if (!pat) {
+      return NextResponse.json({
+        users: MOCK_USERS,
+        isMockData: true,
+        updatedAt: new Date().toISOString(),
+      } satisfies UserListResponse);
+    }
+    const users = await fetchContributorsFor(scoped, pat);
+    return NextResponse.json({
+      users,
+      isMockData: false,
       updatedAt: new Date().toISOString(),
     } satisfies UserListResponse);
   }

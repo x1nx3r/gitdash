@@ -3,6 +3,7 @@ import {
   GetObjectCommand,
   PutObjectCommand,
   CreateBucketCommand,
+  DeleteObjectCommand,
   S3ServiceException,
 } from '@aws-sdk/client-s3';
 
@@ -112,4 +113,49 @@ export async function getJson<T>(key: string): Promise<T | null> {
 
 export async function putJson(key: string, value: unknown): Promise<void> {
   await putObject(key, JSON.stringify(value));
+}
+
+export async function getBlob(
+  key: string
+): Promise<{ data: Uint8Array; contentType: string } | null> {
+  const cfg = getS3Config();
+  const s3 = getS3Client();
+  if (!cfg || !s3) return null;
+  try {
+    const res = await s3.send(
+      new GetObjectCommand({ Bucket: cfg.bucket, Key: key })
+    );
+    const data = res.Body ? await res.Body.transformToByteArray() : null;
+    if (!data) return null;
+    return { data, contentType: res.ContentType ?? 'application/octet-stream' };
+  } catch (e) {
+    if (e instanceof S3ServiceException && e.name === 'NoSuchKey') return null;
+    console.error(`s3 get blob ${key}:`, e);
+    return null;
+  }
+}
+
+export async function putBlob(
+  key: string,
+  data: Uint8Array,
+  contentType: string
+): Promise<void> {
+  const cfg = getS3Config();
+  const s3 = getS3Client();
+  if (!cfg || !s3) return;
+  await s3.send(
+    new PutObjectCommand({
+      Bucket: cfg.bucket,
+      Key: key,
+      Body: data,
+      ContentType: contentType,
+    })
+  );
+}
+
+export async function removeObject(key: string): Promise<void> {
+  const cfg = getS3Config();
+  const s3 = getS3Client();
+  if (!cfg || !s3) return;
+  await s3.send(new DeleteObjectCommand({ Bucket: cfg.bucket, Key: key }));
 }

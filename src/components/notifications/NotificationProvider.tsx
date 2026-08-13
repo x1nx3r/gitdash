@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
-import { playSound, unlockAudio } from '@/lib/soundEngine';
+import { playCustomSound, playSound, unlockAudio } from '@/lib/soundEngine';
 import { subscribeStream } from '@/lib/streamClient';
 import {
   NotificationEvent,
@@ -28,6 +28,7 @@ const DEFAULT_SETTINGS: NotificationSettings = {
   sound: 'chime',
   events: DEFAULT_EVENTS,
   soundByEvent: {},
+  customSounds: {},
 };
 
 function mergeSettings(raw: Partial<NotificationSettings> | null): NotificationSettings {
@@ -38,6 +39,7 @@ function mergeSettings(raw: Partial<NotificationSettings> | null): NotificationS
     sound: raw.sound ?? DEFAULT_SETTINGS.sound,
     events: { ...DEFAULT_EVENTS, ...raw.events },
     soundByEvent: { ...raw.soundByEvent },
+    customSounds: { ...raw.customSounds },
   };
 }
 
@@ -121,8 +123,17 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
         if (!cfg.enabled) continue;
         for (const ev of loginEvents) {
           if (!cfg.events[ev.type]) continue;
-          const tone = cfg.soundByEvent[ev.type] ?? cfg.sound;
-          playSound(tone, cfg.volume);
+          const custom = cfg.customSounds?.[ev.type];
+          if (custom?.id) {
+            const ok = await playCustomSound(
+              `/api/sound-library/${encodeURIComponent(custom.id)}`,
+              cfg.volume
+            );
+            if (!ok) playSound(cfg.soundByEvent[ev.type] ?? cfg.sound, cfg.volume);
+          } else {
+            const tone = cfg.soundByEvent[ev.type] ?? cfg.sound;
+            playSound(tone, cfg.volume);
+          }
         }
       }
     },
@@ -212,6 +223,12 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
     () => notifications.filter(n => !n.read).length,
     [notifications]
   );
+
+  React.useEffect(() => {
+    const onConfigUpdate = () => configCacheRef.current.clear();
+    window.addEventListener('gitdash:sound-config-updated', onConfigUpdate);
+    return () => window.removeEventListener('gitdash:sound-config-updated', onConfigUpdate);
+  }, []);
 
   React.useEffect(() => {
     // If the user already interacted with this page, start audio now.

@@ -14,6 +14,7 @@ const DEFAULT_SETTINGS: NotificationSettings = {
     changes_requested: true,
   },
   soundByEvent: {},
+  customSounds: {},
 };
 
 function configKey(login: string): string {
@@ -60,6 +61,7 @@ export async function PUT(
     ...body,
     events: { ...DEFAULT_SETTINGS.events, ...body.events },
     soundByEvent: { ...body.soundByEvent },
+    customSounds: { ...body.customSounds },
   };
 
   if (!isS3Configured()) {

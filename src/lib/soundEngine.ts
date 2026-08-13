@@ -106,3 +106,68 @@ export function playSound(id: ToneId, volume: number): void {
   }
   TONES[id](c, Math.min(1, Math.max(0, volume)));
 }
+
+const decodedCache = new Map<string, AudioBuffer>();
+const inFlight = new Map<string, Promise<AudioBuffer | null>>();
+
+/** Drop a cached/decoded custom sound, e.g. after the admin re-uploads it. */
+export function invalidateCustomSound(key: string): void {
+  decodedCache.delete(key);
+  inFlight.delete(key);
+}
+
+export async function loadCustomSound(url: string): Promise<AudioBuffer | null> {
+  const cached = decodedCache.get(url);
+  if (cached) return cached;
+  const pending = inFlight.get(url);
+  if (pending) return pending;
+
+  const job = (async () => {
+    try {
+      const res = await fetch(url);
+      if (!res.ok) return null;
+      const bytes = await res.arrayBuffer();
+      const ctx = getContext();
+      if (!ctx) return null;
+      const buf = await ctx.decodeAudioData(bytes);
+      decodedCache.set(url, buf);
+      return buf;
+    } catch {
+      return null;
+    }
+  })();
+
+  inFlight.set(url, job);
+  job.finally(() => inFlight.delete(url));
+  return job;
+}
+
+function playBuffer(c: AudioContext, buf: AudioBuffer, volume: number): void {
+  const src = c.createBufferSource();
+  src.buffer = buf;
+  const gain = c.createGain();
+  gain.gain.value = Math.min(1, Math.max(0, volume));
+  src.connect(gain);
+  gain.connect(c.destination);
+  src.start();
+}
+
+/** Play an uploaded custom sound by URL. Returns false when it can't play. */
+export async function playCustomSound(url: string, volume: number): Promise<boolean> {
+  if (volume <= 0) return false;
+  const c = getContext();
+  if (!c) {
+    setBlocked(true);
+    return false;
+  }
+  if (c.state === 'suspended') {
+    setBlocked(true);
+    void c.resume().catch(() => {});
+  } else {
+    setBlocked(false);
+  }
+  const buf = await loadCustomSound(url);
+  if (!buf) return false;
+  playBuffer(c, buf, volume);
+  return true;
+}

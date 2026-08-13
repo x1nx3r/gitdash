@@ -38,6 +38,26 @@ export interface NotificationSettings {
   events: Record<NotificationEventType, boolean>;
   /** Optional per-event tone override. */
   soundByEvent: Partial<Record<NotificationEventType, ToneId>>;
+  /** Optional per-event uploaded sound files (S3 keys). */
+  customSounds: Partial<Record<NotificationEventType, CustomSoundFile | null>>;
+}
+
+/** A sound file the admin uploaded for a GitHub user, stored on S3. */
+export interface CustomSoundFile {
+  /** Sound library entry id, e.g. a UUID. */
+  id: string;
+  /** Display name from the library, for showing in the UI. */
+  name: string;
+}
+
+/** One entry in the shared sound library. */
+export interface SoundLibraryEntry {
+  /** Unique id, also used to build the S3 key. */
+  id: string;
+  /** Original upload filename. */
+  name: string;
+  /** S3 object key, e.g. sounds/library/{id}.mp3. */
+  key: string;
 }
 
 export interface NotificationEventsResponse {
