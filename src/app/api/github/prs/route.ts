@@ -15,6 +15,9 @@ export async function GET(request: NextRequest) {
   const denied = requireAuth(request);
   if (denied) return denied;
   const includedRepos = parseIncludedRepos(request);
-  const result = await getBoardForScope(includedRepos);
+  // ?force=1 skips the 30s cache: an SSE events nudge just told us the board
+  // changed, so fetch the current GitHub state instead of a stale snapshot.
+  const force = request.nextUrl.searchParams.get('force') === '1';
+  const result = await getBoardForScope(includedRepos, force);
   return NextResponse.json(result);
 }
