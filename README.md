@@ -96,3 +96,4 @@ Third test PR: verify repository field fix and rebuild-then-nudge.
 - webhook nudge test 4
 
 - webhook nudge test 5
+- webhook nudge test 6
