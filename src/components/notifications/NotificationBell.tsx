@@ -10,6 +10,11 @@ import '@material/web/labs/card/elevated-card.js';
 import '@material/web/divider/divider.js';
 import { useNotifications } from './NotificationProvider';
 import {
+  isSoundBlocked,
+  subscribeSoundBlocked,
+  unlockAudio,
+} from '@/lib/soundEngine';
+import {
   NotificationEventType,
   NotificationItem,
 } from '@/types/notifications';
@@ -55,6 +60,11 @@ export default function NotificationBell() {
 
   const [open, setOpen] = React.useState(false);
   const panelRef = React.useRef<HTMLDivElement | null>(null);
+  const soundBlocked = React.useSyncExternalStore(
+    subscribeSoundBlocked,
+    isSoundBlocked,
+    () => false
+  );
 
   React.useEffect(() => {
     if (!open) return;
@@ -138,6 +148,18 @@ export default function NotificationBell() {
             </md-elevated-card>
           )}
         </>
+      )}
+
+      {configured && soundBlocked && (
+        <button
+          type="button"
+          onClick={unlockAudio}
+          className="flex items-center gap-1.5 rounded-full bg-[var(--md-sys-color-primary-container)] px-3 py-1.5 text-[var(--md-sys-color-on-primary-container)] md-typescale-label-small shadow"
+          suppressHydrationWarning
+        >
+          <md-icon style={{ fontSize: '16px' }}>volume_off</md-icon>
+          Tap to enable sound
+        </button>
       )}
 
       <div className="flex flex-row items-center gap-2">

@@ -153,6 +153,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
         }))
         .slice(-MAX_HISTORY);
       setNotifications(prevList => [...prevList, ...items].slice(-MAX_HISTORY));
+      unlockAudio();
       void playForEvents(fresh);
     },
     [playForEvents]
@@ -214,11 +215,13 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
 
   React.useEffect(() => {
     const unlock = () => unlockAudio();
-    window.addEventListener('pointerdown', unlock);
-    window.addEventListener('keydown', unlock);
+    for (const ev of ['pointerdown', 'keydown', 'touchstart', 'mousedown', 'click'] as const) {
+      window.addEventListener(ev, unlock);
+    }
     return () => {
-      window.removeEventListener('pointerdown', unlock);
-      window.removeEventListener('keydown', unlock);
+      for (const ev of ['pointerdown', 'keydown', 'touchstart', 'mousedown', 'click'] as const) {
+        window.removeEventListener(ev, unlock);
+      }
     };
   }, []);
 

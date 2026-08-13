@@ -2,6 +2,26 @@ import { ToneId } from '@/types/notifications';
 
 let ctx: AudioContext | null = null;
 
+let blocked = false;
+const blockedListeners = new Set<() => void>();
+
+function setBlocked(value: boolean): void {
+  if (blocked === value) return;
+  blocked = value;
+  for (const l of blockedListeners) l();
+}
+
+/** True when the AudioContext exists but autoplay policy keeps it suspended. */
+export function isSoundBlocked(): boolean {
+  return blocked;
+}
+
+/** Subscribe to sound-blocked changes; returns an unsubscribe function. */
+export function subscribeSoundBlocked(listener: () => void): () => void {
+  blockedListeners.add(listener);
+  return () => blockedListeners.delete(listener);
+}
+
 function getContext(): AudioContext | null {
   if (typeof window === 'undefined') return null;
   if (!ctx) {
@@ -17,7 +37,14 @@ function getContext(): AudioContext | null {
 /** Call from a user gesture to satisfy the autoplay policy. */
 export function unlockAudio(): void {
   const c = getContext();
-  if (c && c.state === 'suspended') void c.resume();
+  if (!c) return;
+  if (c.state === 'suspended') {
+    void c.resume().then(
+      () => setBlocked(false),
+      () => setBlocked(true)
+    );
+  }
+  setBlocked(false);
 }
 
 function tone(
@@ -60,6 +87,11 @@ export function playSound(id: ToneId, volume: number): void {
   if (id === 'none' || volume <= 0) return;
   const c = getContext();
   if (!c) return;
-  if (c.state === 'suspended') void c.resume();
+  if (c.state === 'suspended') {
+    setBlocked(true);
+    void c.resume();
+  } else {
+    setBlocked(false);
+  }
   TONES[id](c, Math.min(1, Math.max(0, volume)));
 }
