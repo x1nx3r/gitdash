@@ -5,6 +5,19 @@ let ctx: AudioContext | null = null;
 let blocked = false;
 const blockedListeners = new Set<() => void>();
 
+const MUTE_KEY = 'gitdash.soundMuted.v1';
+let muted = readMuted();
+const muteListeners = new Set<() => void>();
+
+function readMuted(): boolean {
+  if (typeof window === 'undefined') return false;
+  try {
+    return window.localStorage.getItem(MUTE_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
+
 function setBlocked(value: boolean): void {
   if (blocked === value) return;
   blocked = value;
@@ -20,6 +33,28 @@ export function isSoundBlocked(): boolean {
 export function subscribeSoundBlocked(listener: () => void): () => void {
   blockedListeners.add(listener);
   return () => blockedListeners.delete(listener);
+}
+
+/** True when the user has muted all notification sounds. */
+export function isMuted(): boolean {
+  return muted;
+}
+
+/** Subscribe to mute changes; returns an unsubscribe function. */
+export function subscribeMuted(listener: () => void): () => void {
+  muteListeners.add(listener);
+  return () => muteListeners.delete(listener);
+}
+
+/** Mute or unmute all notification sounds; persists across reloads. */
+export function setMuted(value: boolean): void {
+  muted = value;
+  try {
+    window.localStorage.setItem(MUTE_KEY, value ? '1' : '0');
+  } catch {
+    // Ignore storage errors so the toggle keeps working in memory.
+  }
+  for (const l of [...muteListeners]) l();
 }
 
 function getContext(): AudioContext | null {
@@ -92,19 +127,28 @@ const TONES: Record<Exclude<ToneId, 'none'>, (c: AudioContext, v: number) => voi
 };
 
 export function playSound(id: ToneId, volume: number): void {
-  if (id === 'none' || volume <= 0) return;
+  if (muted || id === 'none' || volume <= 0) return;
   const c = getContext();
   if (!c) {
     setBlocked(true);
     return;
   }
+  const v = Math.min(1, Math.max(0, volume));
   if (c.state === 'suspended') {
     setBlocked(true);
-    void c.resume().catch(() => {});
+    // Schedule only after resume completes: tones scheduled while suspended
+    // land in the past (frozen currentTime) and end up inaudible.
+    void c.resume().then(
+      () => {
+        setBlocked(false);
+        TONES[id](c, v);
+      },
+      () => setBlocked(true)
+    );
   } else {
     setBlocked(false);
+    TONES[id](c, v);
   }
-  TONES[id](c, Math.min(1, Math.max(0, volume)));
 }
 
 const decodedCache = new Map<string, AudioBuffer>();
@@ -154,20 +198,24 @@ function playBuffer(c: AudioContext, buf: AudioBuffer, volume: number): void {
 
 /** Play an uploaded custom sound by URL. Returns false when it can't play. */
 export async function playCustomSound(url: string, volume: number): Promise<boolean> {
-  if (volume <= 0) return false;
+  if (muted || volume <= 0) return false;
   const c = getContext();
   if (!c) {
     setBlocked(true);
     return false;
   }
-  if (c.state === 'suspended') {
-    setBlocked(true);
-    void c.resume().catch(() => {});
-  } else {
-    setBlocked(false);
-  }
   const buf = await loadCustomSound(url);
   if (!buf) return false;
-  playBuffer(c, buf, volume);
+  const v = Math.min(1, Math.max(0, volume));
+  if (c.state === 'suspended') {
+    setBlocked(true);
+    try {
+      await c.resume();
+    } catch {
+      return false;
+    }
+  }
+  setBlocked(false);
+  playBuffer(c, buf, v);
   return true;
 }

@@ -11,7 +11,11 @@ import '@material/web/divider/divider.js';
 import { useNotifications } from './NotificationProvider';
 import {
   isAudioUnsupported,
+  isMuted,
   isSoundBlocked,
+  playSound,
+  setMuted,
+  subscribeMuted,
   subscribeSoundBlocked,
   unlockAudio,
 } from '@/lib/soundEngine';
@@ -66,6 +70,7 @@ export default function NotificationBell() {
     isSoundBlocked,
     () => false
   );
+  const muted = React.useSyncExternalStore(subscribeMuted, isMuted, () => false);
   const audioUnsupported = React.useState(() => isAudioUnsupported())[0];
 
   React.useEffect(() => {
@@ -162,16 +167,27 @@ export default function NotificationBell() {
         </div>
       )}
 
-      {configured && !audioUnsupported && soundBlocked && (
-        <button
-          type="button"
-          onClick={unlockAudio}
-          className="flex items-center gap-1.5 rounded-full bg-[var(--md-sys-color-primary-container)] px-3 py-1.5 text-[var(--md-sys-color-on-primary-container)] md-typescale-label-small shadow"
+      {configured && !audioUnsupported && (
+        <md-icon-button
+          aria-label={
+            muted || soundBlocked ? 'Enable sound' : 'Mute sounds'
+          }
+          onClick={() => {
+            if (muted) {
+              setMuted(false);
+              unlockAudio();
+              playSound('chime', 0.7);
+            } else if (soundBlocked) {
+              unlockAudio();
+              playSound('chime', 0.7);
+            } else {
+              setMuted(true);
+            }
+          }}
           suppressHydrationWarning
         >
-          <md-icon style={{ fontSize: '16px' }}>volume_off</md-icon>
-          Tap to enable sound
-        </button>
+          <md-icon>{muted || soundBlocked ? 'volume_off' : 'volume_up'}</md-icon>
+        </md-icon-button>
       )}
 
       <div className="flex flex-row items-center gap-2">

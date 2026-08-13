@@ -1,7 +1,10 @@
 'use client';
 
 import * as React from 'react';
+import '@material/web/chips/chip-set.js';
+import '@material/web/chips/filter-chip.js';
 import '@material/web/divider/divider.js';
+import '@material/web/icon/icon.js';
 import M3Switch from '@/components/notifications/M3Switch';
 import M3Slider from '@/components/notifications/M3Slider';
 import { useNotifications } from '@/components/notifications/NotificationProvider';
@@ -45,10 +48,6 @@ export default function SoundSettingsForm({
   const { configured } = useNotifications();
   const [uploading, setUploading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
-  const pendingTypeRef = React.useRef<NotificationEventType | null>(null);
-
-  const toneLabel = (tone: ToneId) =>
-    TONES.find(t => t.id === tone)?.label ?? tone;
 
   const preview = async (type: NotificationEventType) => {
     const custom = value.customSounds?.[type];
@@ -94,7 +93,6 @@ export default function SoundSettingsForm({
       return;
     }
     setUploading(true);
-    pendingTypeRef.current = type;
     try {
       const entry = await onUpload(file);
       if (entry) assign(type, entry.id);
@@ -102,7 +100,6 @@ export default function SoundSettingsForm({
       setError(e instanceof Error ? e.message : String(e));
     } finally {
       setUploading(false);
-      pendingTypeRef.current = null;
     }
   };
 
@@ -178,24 +175,50 @@ export default function SoundSettingsForm({
                     </div>
 
                     <div className="mt-3 flex flex-wrap items-center gap-2">
-                      <select
-                        value={custom?.id ?? ''}
-                        onChange={e => assign(type, e.target.value)}
-                        aria-label={`Sound for ${EVENT_LABELS[type]}`}
-                        className="min-w-0 flex-1 rounded-[var(--md-sys-shape-corner-extra-small)] border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface-container-high)] px-2 py-1.5 text-[13px] text-[var(--md-sys-color-on-surface)] outline-none focus:border-[var(--md-sys-color-primary)]"
-                      >
-                        <option value="">
-                          Default tone ({toneLabel(value.sound)})
-                        </option>
-                        {custom && !sounds.some(s => s.id === custom.id) && (
-                          <option value={custom.id}>{custom.name} (removed)</option>
-                        )}
-                        {sounds.map(s => (
-                          <option key={s.id} value={s.id}>
-                            {s.name}
-                          </option>
+                      <md-chip-set>
+                        {TONES.map(tone => (
+                          <md-filter-chip
+                            key={tone.id}
+                            label={tone.label}
+                            selected={value.sound === tone.id}
+                            onClick={() => onChange({ ...value, sound: tone.id })}
+                            suppressHydrationWarning
+                          ></md-filter-chip>
                         ))}
-                      </select>
+                      </md-chip-set>
+
+                      <div className="relative min-w-[150px] flex-1">
+                        <select
+                          value={custom?.id ?? ''}
+                          onChange={e => assign(type, e.target.value)}
+                          aria-label={`Custom sound for ${EVENT_LABELS[type]}`}
+                          className="w-full appearance-none rounded-[var(--md-sys-shape-corner-extra-small)] border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface-container-high)] py-1.5 pl-3 pr-8 text-[13px] text-[var(--md-sys-color-on-surface)] outline-none focus:border-[var(--md-sys-color-primary)]"
+                        >
+                          <option value="">Custom: none</option>
+                          {custom && !sounds.some(s => s.id === custom.id) && (
+                            <option value={custom.id}>{custom.name} (removed)</option>
+                          )}
+                          {sounds.map(s => (
+                            <option key={s.id} value={s.id}>
+                              {s.name}
+                            </option>
+                          ))}
+                        </select>
+                        <md-icon
+                          style={{
+                            position: 'absolute',
+                            right: '8px',
+                            top: '50%',
+                            transform: 'translateY(-50%)',
+                            fontSize: '18px',
+                            color: 'var(--md-sys-color-outline)',
+                            pointerEvents: 'none',
+                          }}
+                        >
+                          expand_more
+                        </md-icon>
+                      </div>
+
                       <button
                         type="button"
                         onClick={() => void preview(type)}

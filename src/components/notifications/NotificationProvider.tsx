@@ -13,6 +13,8 @@ import {
 import NotificationBell from './NotificationBell';
 
 const STORAGE_KEY = 'gitdash.notifications.v1';
+const SEEN_EVENTS_KEY = 'gitdash.seenEvents.v1';
+const MAX_SEEN = 500;
 const EVENTS_POLL_MS = 30_000;
 
 const DEFAULT_EVENTS: Record<NotificationEventType, boolean> = {
@@ -70,9 +72,12 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
     STORAGE_KEY,
     null
   );
+  // Seen event ids survive refreshes so a page load never replays the whole
+  // history as fresh notifications (badge flood + sound burst).
+  const [seenIds, setSeenIds] = useLocalStorage<string[]>(SEEN_EVENTS_KEY, []);
   const [configured, setConfigured] = React.useState(false);
   const [notifications, setNotifications] = React.useState<NotificationItem[]>([]);
-  const seenIdsRef = React.useRef<Set<string>>(new Set());
+  const seenIdsRef = React.useRef<Set<string>>(new Set(seenIds));
   const configCacheRef = React.useRef<
     Map<string, { settings: NotificationSettings; ts: number }>
   >(new Map());
@@ -147,14 +152,19 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
       if (!json.configured) return;
 
       const fresh: NotificationEvent[] = [];
+      const newlySeen: string[] = [];
       for (const ev of json.events) {
         const id = `${ev.timestamp}-${String(ev.pr.id)}-${ev.type}`;
         if (!seenIdsRef.current.has(id)) {
           seenIdsRef.current.add(id);
+          newlySeen.push(id);
           fresh.push(ev);
         }
       }
       if (fresh.length === 0) return;
+      if (newlySeen.length > 0) {
+        setSeenIds(prev => [...prev, ...newlySeen].slice(-MAX_SEEN));
+      }
 
       const items: NotificationItem[] = fresh
         .map((ev, i) => ({
@@ -167,7 +177,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
       unlockAudio();
       void playForEvents(fresh);
     },
-    [playForEvents]
+    [playForEvents, setSeenIds]
   );
 
   React.useEffect(() => {
