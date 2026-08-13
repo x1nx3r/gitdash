@@ -3,6 +3,7 @@
 import * as React from 'react';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { playSound, unlockAudio } from '@/lib/soundEngine';
+import { subscribeStream } from '@/lib/streamClient';
 import {
   NotificationEvent,
   NotificationEventType,
@@ -128,6 +129,35 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
     [fetchUserConfig, settings]
   );
 
+  /** Dedupe, list and sound new events. Shared by the poll and the SSE stream. */
+  const ingestEvents = React.useCallback(
+    (json: { configured: boolean; events: NotificationEvent[] }) => {
+      setConfigured(prev => (json.configured !== prev ? json.configured : prev));
+      if (!json.configured) return;
+
+      const fresh: NotificationEvent[] = [];
+      for (const ev of json.events) {
+        const id = `${ev.timestamp}-${String(ev.pr.id)}-${ev.type}`;
+        if (!seenIdsRef.current.has(id)) {
+          seenIdsRef.current.add(id);
+          fresh.push(ev);
+        }
+      }
+      if (fresh.length === 0) return;
+
+      const items: NotificationItem[] = fresh
+        .map((ev, i) => ({
+          ...ev,
+          id: `${ev.timestamp}-${String(ev.pr.id)}-${ev.type}-${i}`,
+          read: false,
+        }))
+        .slice(-MAX_HISTORY);
+      setNotifications(prevList => [...prevList, ...items].slice(-MAX_HISTORY));
+      void playForEvents(fresh);
+    },
+    [playForEvents]
+  );
+
   React.useEffect(() => {
     let cancelled = false;
 
@@ -140,29 +170,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
           events: NotificationEvent[];
         };
         if (cancelled) return;
-
-        if (json.configured !== configured) setConfigured(json.configured);
-        if (!json.configured) return;
-
-        const fresh: NotificationEvent[] = [];
-        for (const ev of json.events) {
-          const id = `${ev.timestamp}-${String(ev.pr.id)}-${ev.type}`;
-          if (!seenIdsRef.current.has(id)) {
-            seenIdsRef.current.add(id);
-            fresh.push(ev);
-          }
-        }
-        if (fresh.length === 0) return;
-
-        const items: NotificationItem[] = fresh
-          .map((ev, i) => ({
-            ...ev,
-            id: `${ev.timestamp}-${String(ev.pr.id)}-${ev.type}-${i}`,
-            read: false,
-          }))
-          .slice(-MAX_HISTORY);
-        setNotifications(prevList => [...prevList, ...items].slice(-MAX_HISTORY));
-        void playForEvents(fresh);
+        ingestEvents(json);
       } catch {
         // Transient failure; the next poll will retry.
       }
@@ -174,7 +182,16 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
       cancelled = true;
       clearInterval(interval);
     };
-  }, [configured, playForEvents]);
+  }, [ingestEvents]);
+
+  // SSE: events arrive instantly on webhook delivery; dedupe makes
+  // double-delivery (stream + poll) harmless. Poll remains the fallback.
+  React.useEffect(() => {
+    const unsubscribe = subscribeStream(msg => {
+      if (msg.type === 'events') ingestEvents(msg);
+    });
+    return unsubscribe;
+  }, [ingestEvents]);
 
   const markAllRead = React.useCallback(() => {
     setNotifications(prevList => prevList.map(n => ({ ...n, read: true })));

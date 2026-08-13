@@ -6,6 +6,7 @@ import '@material/web/labs/card/elevated-card.js';
 import KanbanBoard from '@/components/kanban/KanbanBoard';
 import Slideshow from '@/components/slideshow/Slideshow';
 import { useRepos } from '@/components/repos/RepoProvider';
+import { subscribeStream } from '@/lib/streamClient';
 import { GitHubApiResponse } from '@/types/github';
 
 export default function Home() {
@@ -25,7 +26,12 @@ export default function Home() {
     selectedRef.current = selected;
   }, [selected]);
 
+  // Latest-wins guard: a webhook nudge can fire a refetch while a poll is
+  // still in flight; the older response must never clobber the newer one.
+  const fetchSeq = React.useRef(0);
+
   const fetchKanbanData = React.useCallback(async () => {
+    const seq = ++fetchSeq.current;
     try {
       const reposParam = selectedRef.current.join(',');
       const url = reposParam
@@ -34,6 +40,7 @@ export default function Home() {
       const res = await fetch(url);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const json: GitHubApiResponse = await res.json();
+      if (seq !== fetchSeq.current) return;
       setData(json);
       setError(null);
     } catch (err) {
@@ -53,6 +60,16 @@ export default function Home() {
   React.useEffect(() => {
     if (mounted) fetchKanbanData();
   }, [mounted, selected, fetchKanbanData]);
+
+  // SSE nudge: a webhook delivery tells us the board changed; refetch
+  // immediately (the server cache makes this cheap). The 30s poll stays
+  // as the fallback when the stream is down.
+  React.useEffect(() => {
+    const unsubscribe = subscribeStream(msg => {
+      if (msg.type === 'board') void fetchKanbanData();
+    });
+    return unsubscribe;
+  }, [fetchKanbanData]);
 
   if (!mounted || (loading && !data)) {
     return (

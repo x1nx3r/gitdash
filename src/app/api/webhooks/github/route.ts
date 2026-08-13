@@ -2,11 +2,15 @@ import { NextResponse } from 'next/server';
 import {
   appendEvent,
   buildEvent,
+  listEvents,
   observeHookEvent,
   toPrSnapshot,
   verifySignature,
   webhooksConfigured,
 } from '@/lib/notificationHub';
+import { invalidateEnrichment } from '@/lib/githubEnrich';
+import { refreshBoardsForRepo } from '@/lib/boardCache';
+import { broadcastSSE } from '@/lib/streamHub';
 
 const PR_EVENTS: Record<string, boolean> = {
   opened: true,
@@ -69,28 +73,52 @@ export async function POST(request: Request) {
       if (hookId) await observeHookEvent(hookId, fullName);
     };
 
+    // The PR a delivery refers to, when the event type is one we act on.
+    let handledPR: { fullName: string; number: number } | null = null;
+
     if (event === 'pull_request' && payload.pull_request) {
       const pr = payload.pull_request;
       const action = (payload as GitHubPullRequestEvent).action;
+      const fullName = pr.repository?.full_name ?? '';
       if (PR_EVENTS[action ?? '']) {
         await appendEvent(buildEvent('new_pr', toPrSnapshot(pr)));
-        await observe(pr.repository?.full_name ?? '');
+        await observe(fullName);
+        handledPR = { fullName, number: pr.number ?? 0 };
       } else if (action === 'closed' && pr.merged) {
         await appendEvent(buildEvent('merged', toPrSnapshot(pr)));
-        await observe(pr.repository?.full_name ?? '');
+        await observe(fullName);
+        handledPR = { fullName, number: pr.number ?? 0 };
       }
     } else if (event === 'pull_request_review') {
       const rev = payload as GitHubReviewEvent;
       if (rev.review && rev.pull_request) {
         const state = rev.review.state;
+        const fullName = rev.pull_request.repository?.full_name ?? '';
         if (state === 'approved') {
           await appendEvent(buildEvent('ready_to_merge', toPrSnapshot(rev.pull_request)));
-          await observe(rev.pull_request.repository?.full_name ?? '');
+          await observe(fullName);
+          handledPR = { fullName, number: rev.pull_request.number ?? 0 };
         } else if (state === 'changes_requested') {
           await appendEvent(buildEvent('changes_requested', toPrSnapshot(rev.pull_request)));
-          await observe(rev.pull_request.repository?.full_name ?? '');
+          await observe(fullName);
+          handledPR = { fullName, number: rev.pull_request.number ?? 0 };
         }
       }
+    }
+
+    // Board refresh: drop the stale enrichment for the affected PR, rebuild
+    // every active scope that includes its repo, then nudge connected
+    // browsers to refetch (board) and ingest (events). Fire-and-forget the
+    // rebuild; the nudge arrives now and clients refetch the warm cache.
+    if (handledPR) {
+      invalidateEnrichment(handledPR.fullName, handledPR.number);
+      void refreshBoardsForRepo(handledPR.fullName);
+      broadcastSSE({ type: 'board' });
+      broadcastSSE({
+        type: 'events',
+        configured: true,
+        events: await listEvents(),
+      });
     }
   } catch (e) {
     console.error('webhook handler:', e);

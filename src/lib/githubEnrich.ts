@@ -47,6 +47,17 @@ interface GitHubPullDetails {
 const cache = new Map<string, { data: Enrichment | null; ts: number }>();
 const inFlight = new Map<string, Promise<Enrichment | null>>();
 
+/**
+ * Drop the cached/in-flight enrichment for one PR so the next read refetches
+ * fresh reviewer states and stats (called when a webhook delivery implies
+ * the current snapshot is stale).
+ */
+export function invalidateEnrichment(fullName: string, number: number): void {
+  const key = `${fullName}#${number}`;
+  cache.delete(key);
+  inFlight.delete(key);
+}
+
 export async function enrichPR(fullName: string, number: number): Promise<Enrichment | null> {
   const key = `${fullName}#${number}`;
   const cached = cache.get(key);
