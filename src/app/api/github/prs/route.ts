@@ -39,6 +39,11 @@ interface GitHubIssueSearchResponse {
   items: GitHubIssueSearchItem[];
 }
 
+/** Sort a column's PRs oldest created first. */
+function sortOldestFirst(prs: PullRequest[]): void {
+  prs.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+}
+
 function observeUsers(prs: PullRequest[]): void {
   if (!isS3Configured()) return;
   const authors: User[] = [];
@@ -327,6 +332,8 @@ export async function GET(request: NextRequest) {
         });
 
         const allPrs = [...livePrs, ...mergedPrs];
+        sortOldestFirst(livePrs);
+        sortOldestFirst(mergedPrs);
 
         const columns: KanbanColumns = {
           needs_review: livePrs.filter(pr => pr.column === 'needs_review'),
@@ -360,6 +367,7 @@ export async function GET(request: NextRequest) {
   if (includedRepos.length > 0) {
     allPrs = allPrs.filter(pr => includedRepos.includes(pr.repository.fullName));
   }
+  sortOldestFirst(allPrs);
   const columns: KanbanColumns = {
     needs_review: allPrs.filter(pr => pr.column === 'needs_review'),
     changes_requested: allPrs.filter(pr => pr.column === 'changes_requested'),
