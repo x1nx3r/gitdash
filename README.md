@@ -84,3 +84,7 @@ Entire thing is vibecoded, I don't read even a single line of the code, good luc
 ## Webhook nudge test
 
 Temporary PR to exercise the webhook -> board refresh pipeline.
+
+## Webhook nudge test 2
+
+Second test PR to verify rebuild-then-nudge ordering and sound unlock.
